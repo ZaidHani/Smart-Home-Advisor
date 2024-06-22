@@ -1,5 +1,7 @@
 from bs4 import BeautifulSoup
 import requests
+import os
+import glob
 import re
 import pandas as pd
 import time
@@ -72,26 +74,33 @@ def safe_extract(find_function, default=None):
     except (AttributeError, TypeError):
         return default
     
-def scrape_real_estate_data(links:pd.DataFrame) -> str:
-    """Extract Data From Real-Estate Page
+def scrape_prodcuts_data(links:pd.DataFrame) -> str:
+    """Extract Data From prodcuts Page
     
-    Extract all relevant data from a real-estate page provided by the link of the page including the id, the location, interiour info about the estate, and many more.
+    Extract all relevant data from a prodcuts page provided by the link of the page including the id, the location, specific info about the product, and many more.
     
     Parameters
     ----------
     df : pd.DataFrame
-        A Pandas DataFram that contains real-estate web pages links, each link represent one listing, along with the price and the id of each listing.
+        A Pandas DataFram that contains prodcuts web pages links, each link represent one listing, along with the price and the id of each listing.
 
     Returns
     -------
     str
         A message indicating the process of scraping products is complete
     """
+    print(len(links))
     df = []
     i=1
-    for row in range(len(links)):
+    for row in range(1, len(links)+1):
         link = links.loc[row,'link']        
         r = requests.get(link)
+        # make this a recursive function
+        if str(r) == '<Response [403]>':
+            print(r)
+            print('Wating for an hour')
+            time.sleep(3600)
+            r = requests.get(link)
         soup = BeautifulSoup(r.content,'html.parser')
         data = {}
         data['link'] = link
@@ -107,6 +116,7 @@ def scrape_real_estate_data(links:pd.DataFrame) -> str:
         data['long'] = coordinates[0] if coordinates else None
         data['lat'] = coordinates[1] if coordinates else None
         data['owner_link'] = safe_extract(lambda: 'https://opensooq.com' + soup.find('section', {'id': 'PostViewOwnerCard'}).a.get("href"))
+        #
         data['price'] = links.loc[row,'price']
         # This for loop extracts all the data in the information section of the product's page including the building's rooms, bathrooms, age and more
         ul = soup.find('ul', attrs={'class':re.compile('flex flexSpaceBetween flexWrap mt-8')})
@@ -120,8 +130,10 @@ def scrape_real_estate_data(links:pd.DataFrame) -> str:
         df.append(data)
         if i%1000==0:
             print(f'Products Scraped: {i}')
-            pd.DataFrame(df).to_csv(f'data/products/{i//1000}.csv',index_label=False)
+            pd.DataFrame(df).to_csv(f'data/products/{(i//1000)}.csv',index_label=False)
             df = []
+        elif i==len(links):
+            pd.DataFrame(df).to_csv(f'data/products/{(i//1000)}.csv',index_label=False)
         i+=1
     return "Scraping Products is Done!"
 
@@ -141,6 +153,7 @@ def scrape_seller_data(links:list) -> str:
         A message that indicates that scraping sellers data is done.
     """
     df = []
+    print(f'Pulling {len(links)} Sellers Pages')
     for link in links:
         r = requests.get(link+'?info=info')
         soup = BeautifulSoup(r.content,'html.parser')
@@ -158,3 +171,30 @@ def scrape_seller_data(links:list) -> str:
         df.append(data)
     pd.DataFrame(df).to_csv('sellers.csv',index_label=False)
     return "Scraping Sellers Data is Done!"
+
+def main():
+    # ------Scraping Listings Links------
+    # this has already been done so no need to run this function again.
+    # URL = 'https://jo.opensooq.com/en/real-estate-for-sale/all?search=true&sort_code=recent'
+    # pages = 1122 # this number might change, go to the link above and see how many pages are there
+    # scrape_links(URL, pages)
+    
+    # ------Scraping Products Data------
+    # redo the scraping, for 2 reasons:
+        # 1- most of the data will be gone by the time you read this
+        # 2- the data scraped is not complete, we are missing about 2K rows
+    # links = pd.read_csv('data/links.csv')
+    # scrape_prodcuts_data(links)
+
+    # ------Scraping Sellers Data------
+    all_files = glob.glob(os.path.join(r'.\data\products' , "*.csv"))
+    li = []
+    for filename in all_files:
+        df = pd.read_csv(filename)
+        li.append(df)
+    sellers_links = pd.concat(li, axis=0, ignore_index=True)
+    sellers_links = list(sellers_links['owner_link'].dropna().unique())
+    scrape_seller_data(sellers_links)
+    
+if __name__=='__main__':
+    main()
