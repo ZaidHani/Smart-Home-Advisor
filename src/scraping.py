@@ -104,11 +104,13 @@ def scrape_prodcuts_data(links:pd.DataFrame) -> str:
         soup = BeautifulSoup(r.content,'html.parser')
         data = {}
         data['link'] = link
+        # drop the null ids
         data['id'] = safe_extract(lambda: re.findall(r'\d+', soup.find('div', attrs={'class': re.compile('flex flexSpaceBetween alignItems pb-16 font-17 borderBottom')}).text)[0])
         data['title'] = safe_extract(lambda: soup.find('h1', attrs={'class': re.compile('postViewTitle font-22 mt-16 mb-32')}).text)
         data['images'] = safe_extract(lambda: [img['src'] for img in soup.find('div', {'class': 'image-gallery-slides'}).find_all('img')])
-        data['member_since'] = safe_extract(lambda: soup.find('section', {'id': 'PostViewOwnerCard'}).find('span', {'class': 'ltr inline'}).text)
+        # data['member_since'] = safe_extract(lambda: soup.find('section', {'id': 'PostViewOwnerCard'}).find('span', {'class': 'ltr inline'}).text)
         data['description'] = safe_extract(lambda: soup.find('section', {'id': 'postViewDescription'}).div.text)
+         # drop the nulls
         data['owner'] = safe_extract(lambda: soup.find('section', {'id': 'PostViewOwnerCard'}).a.h3.text)
         data['reviews'] = safe_extract(lambda: soup.find('section', {'id': 'PostViewOwnerCard'}).a.span.text)
         data['google_maps_locatoin_link'] = safe_extract(lambda: soup.find('a', attrs={'class': re.compile('sc-750f6c2-0 dqtnfq map_google relative block mt-16')})['href'])
@@ -137,64 +139,61 @@ def scrape_prodcuts_data(links:pd.DataFrame) -> str:
         i+=1
     return "Scraping Products is Done!"
 
-def scrape_seller_data(links:list) -> str:
-    """Extract Data From Seller Page
+# def scrape_seller_data(links:list) -> str:
     
-    Extract all relevant data from sellers page provided by the link of the page, and store them in 'data/sellers.csv' file.
+#     """Extract Data From Seller Page
     
-    Parameters
-    ----------
-    links : list
-        A list of sellers web pages links, each link represent one seller
+#     Extract all relevant data from sellers page provided by the link of the page, and store them in 'data/sellers.csv' file.
+    
+#     Parameters
+#     ----------
+#     links : list
+#         A list of sellers web pages links, each link represent one seller
 
-    Returns
-    -------
-    str
-        A message that indicates that scraping sellers data is done.
-    """
-    df = []
-    print(f'Pulling {len(links)} Sellers Pages')
-    for link in links:
-        r = requests.get(link+'?info=info')
-        soup = BeautifulSoup(r.content,'html.parser')
-        data = {}
-        data['owner_link'] = link
-        data['owner'] = safe_extract(lambda: soup.find('h1', {'class':'font-24'}).text)
-        popularity = safe_extract(lambda: soup.find('div',{'class':'flex mt-auto mb-32'}).find_all('span', {'class':'bold'}), [])
-        data['views'] = popularity[0].text if popularity else None
-        data['followers'] = popularity[1].text if popularity else None
-        data['average_rating'] = safe_extract(lambda: soup.find('div',{'class':'sc-fb4b16ed-4 dkGjJX bold'}).text)
-        data['google_maps_locatoin_link'] = safe_extract(lambda: soup.find('a', attrs={'class': re.compile('sc-750f6c2-0 dqtnfq map_google relative block mt-16')})['href'])
-        coordinates = safe_extract(lambda: re.findall(r'-?\d+\.\d+', data['google_maps_locatoin_link']), [])
-        data['long'] = coordinates[0] if coordinates else None
-        data['lat'] = coordinates[1] if coordinates else None
-        df.append(data)
-    pd.DataFrame(df).to_csv('sellers.csv',index_label=False)
-    return "Scraping Sellers Data is Done!"
+#     Returns
+#     -------
+#     str
+#         A message that indicates that scraping sellers data is done.
+#     """
+#     df = []
+#     print(f'Pulling {len(links)} Sellers Pages')
+#     for link in links:
+#         r = requests.get(link+'?info=info')
+#         soup = BeautifulSoup(r.content,'html.parser')
+#         data = {}
+#         data['owner_link'] = link
+#         data['owner'] = safe_extract(lambda: soup.find('h1', {'class':'font-24'}).text)
+#         popularity = safe_extract(lambda: soup.find('div',{'class':'flex mt-auto mb-32'}).find_all('span', {'class':'bold'}), [])
+#         data['views'] = popularity[0].text if popularity else None
+#         data['followers'] = popularity[1].text if popularity else None
+#         data['average_rating'] = safe_extract(lambda: soup.find('div',{'class':'sc-fb4b16ed-4 dkGjJX bold'}).text)
+#         df.append(data)
+#     pd.DataFrame(df).to_csv('sellers.csv',index_label=False)
+#     return "Scraping Sellers Data is Done!"
 
 def main():
     # ------Scraping Listings Links------
     # this has already been done so no need to run this function again.
-    # URL = 'https://jo.opensooq.com/en/real-estate-for-sale/all?search=true&sort_code=recent'
-    # pages = 1122 # this number might change, go to the link above and see how many pages are there
-    # scrape_links(URL, pages)
+    URL = 'https://jo.opensooq.com/en/real-estate-for-sale/all?search=true&sort_code=recent'
+    pages = 1122 # this number might change, go to the link above and see how many pages are there
+    scrape_links(URL, pages)
     
     # ------Scraping Products Data------
     # redo the scraping, for 2 reasons:
         # 1- most of the data will be gone by the time you read this
         # 2- the data scraped is not complete, we are missing about 2K rows
-    # links = pd.read_csv('data/links.csv')
-    # scrape_prodcuts_data(links)
+    links = pd.read_csv('data/links.csv')
+    scrape_prodcuts_data(links)
 
     # ------Scraping Sellers Data------
-    all_files = glob.glob(os.path.join(r'.\data\products' , "*.csv"))
-    li = []
-    for filename in all_files:
-        df = pd.read_csv(filename)
-        li.append(df)
-    sellers_links = pd.concat(li, axis=0, ignore_index=True)
-    sellers_links = list(sellers_links['owner_link'].dropna().unique())
-    scrape_seller_data(sellers_links)
+    # all_files = glob.glob(os.path.join(r'.\data\products' , "*.csv"))
+    # li = []
+    # for filename in all_files:
+    #     df = pd.read_csv(filename)
+    #     li.append(df)
+    # sellers_links = pd.concat(li, axis=0, ignore_index=True)
+    # sellers_links = list(sellers_links['owner_link'].dropna().unique())
+    # scrape_seller_data(sellers_links)
     
 if __name__=='__main__':
     main()
