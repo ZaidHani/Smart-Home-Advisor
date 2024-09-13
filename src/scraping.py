@@ -5,6 +5,7 @@ import glob
 import re
 import pandas as pd
 import time
+import datetime
 
 def scrape_links(URL:str, pages:int) -> str:
     """Scrape product URLs from OpenSooq
@@ -104,13 +105,10 @@ def scrape_prodcuts_data(links:pd.DataFrame) -> str:
         soup = BeautifulSoup(r.content,'html.parser')
         data = {}
         data['link'] = link
-        # drop the null ids
         data['id'] = safe_extract(lambda: re.findall(r'\d+', soup.find('div', attrs={'class': re.compile('flex flexSpaceBetween alignItems pb-16 font-17 borderBottom')}).text)[0])
         data['title'] = safe_extract(lambda: soup.find('h1', attrs={'class': re.compile('postViewTitle font-22 mt-16 mb-32')}).text)
         data['images'] = safe_extract(lambda: [img['src'] for img in soup.find('div', {'class': 'image-gallery-slides'}).find_all('img')])
-        # data['member_since'] = safe_extract(lambda: soup.find('section', {'id': 'PostViewOwnerCard'}).find('span', {'class': 'ltr inline'}).text)
         data['description'] = safe_extract(lambda: soup.find('section', {'id': 'postViewDescription'}).div.text)
-         # drop the nulls
         data['owner'] = safe_extract(lambda: soup.find('section', {'id': 'PostViewOwnerCard'}).a.h3.text)
         data['reviews'] = safe_extract(lambda: soup.find('section', {'id': 'PostViewOwnerCard'}).a.span.text)
         data['google_maps_locatoin_link'] = safe_extract(lambda: soup.find('a', attrs={'class': re.compile('sc-750f6c2-0 dqtnfq map_google relative block mt-16')})['href'])
@@ -118,8 +116,8 @@ def scrape_prodcuts_data(links:pd.DataFrame) -> str:
         data['long'] = coordinates[0] if coordinates else None
         data['lat'] = coordinates[1] if coordinates else None
         data['owner_link'] = safe_extract(lambda: 'https://opensooq.com' + soup.find('section', {'id': 'PostViewOwnerCard'}).a.get("href"))
-        #
         data['price'] = links.loc[row,'price']
+        data['timestamp'] = datetime.datetime.now()
         # This for loop extracts all the data in the information section of the product's page including the building's rooms, bathrooms, age and more
         ul = soup.find('ul', attrs={'class':re.compile('flex flexSpaceBetween flexWrap mt-8')})
         try:
