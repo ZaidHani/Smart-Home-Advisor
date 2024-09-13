@@ -3,7 +3,9 @@ import os
 import time
 import glob
 import numpy as np
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
+import datetime
 
 import time
 
@@ -108,7 +110,7 @@ def cleanining(products_df: pd.DataFrame) -> pd.DataFrame:
     products_df['price'].fillna(0,inplace=True)
     products_df['price'] = products_df['price'].astype('float')
     
-    products_df['predicted'] = 0
+    products_df['predicted'] = False
 
     products_df['area'] = products_df['Land Area'].fillna(products_df['Surface Area'])
     products_df['area'] = products_df['area'].str.replace('\D+', '', regex=True)
@@ -165,15 +167,17 @@ def normalization(products_df:pd.DataFrame) -> tuple:
 
     Returns:
     -------
-    tuple of pd.DataFrames
+    tuple of pd.DataFrame
         A tuple containing the normalized tables, ready for loading into the data warehouse.
         For example:
-        (---put the table names here---)."""
+        (dim_property_details, dim_property, dim_amenities, dim_location, dim_date, fact_listing)."""
     # Sub Dimensional Table
     dim_property_details = products_df[['zoned_for', 'facade', 'property_mortgaged', 'payment_method', 'subcategory', 'bedrooms', 'bathrooms', 
                                 'furnished', 'floor', 'building_age', 'number_of_floors']]
     dim_property_details = dim_property_details.drop_duplicates()
     dim_property_details['details_id'] = range(1, len(dim_property_details)+1)
+    dim_property_details = dim_property_details[['details_id', 'zoned_for', 'facade', 'property_mortgaged', 'payment_method', 'subcategory', 'bedrooms', 
+                                             'bathrooms', 'furnished', 'floor', 'building_age', 'number_of_floors']]
     # Dimension Tables
     dim_property = products_df[['title', 'link', 'images', 'description', 'area', 'owner', 'owner_link', 'nearby',
                             'zoned_for', 'facade', 'property_mortgaged', 'payment_method', 'subcategory', 'bedrooms', 'bathrooms', 
@@ -184,16 +188,21 @@ def normalization(products_df:pd.DataFrame) -> tuple:
                                     on=['zoned_for', 'facade', 'property_mortgaged', 'payment_method', 'subcategory', 'bedrooms', 'bathrooms', 
                                         'furnished', 'floor', 'building_age', 'number_of_floors'],
                                     how='left')
-    dim_property = dim_property[['title', 'link', 'images', 'description', 'area', 'owner', 'owner_link', 'nearby', 'property_id', 'details_id']]
+    dim_property = dim_property[['property_id', 'details_id', 'title', 'link', 'images', 'description', 'area', 'owner', 'owner_link', 'nearby']]
     
     dim_amenities = products_df[['main_amenities', 'additional_amenities']]
     dim_amenities = dim_amenities.drop_duplicates()
     dim_amenities['amenities_id'] = range(1, len(dim_amenities)+1)
+    dim_amenities = dim_amenities[['amenities_id', 'main_amenities', 'additional_amenities']]
     
     dim_location = products_df[['google_maps_locatoin_link', 'long', 'lat', 'city', 'neighborhood']]
     dim_location = dim_location.drop_duplicates()
     dim_location['location_id'] = range(1, len(dim_location)+1)
+    dim_location = dim_location[['location_id', 'google_maps_locatoin_link', 'long', 'lat', 'city', 'neighborhood']]
     
+    # delete that it is only for testing
+    products_df['timestamp'] = datetime.datetime.now()
+
     dim_date = pd.DataFrame(products_df['timestamp'])
     dim_date['year'] = dim_date['timestamp'].dt.year
     dim_date['month'] = dim_date['timestamp'].dt.month
@@ -203,6 +212,7 @@ def normalization(products_df:pd.DataFrame) -> tuple:
     dim_date['second'] = dim_date['timestamp'].dt.second
     dim_date = dim_date.drop_duplicates()
     dim_date['date_id'] = range(1, len(dim_date)+1)
+    dim_date = dim_date[['date_id', 'timestamp', 'year', 'month', 'day', 'hour', 'minute', 'second']]
     
     # Fact Table
     fact_listing = products_df.merge(dim_property, 
@@ -217,26 +227,72 @@ def normalization(products_df:pd.DataFrame) -> tuple:
     fact_listing = fact_listing.merge(dim_date, 
                                     on=['timestamp'],
                                     how='left')
-    fact_listing[['id', 'property_id', 'location_id', 'amenities_id', 'date_id', 'price', 'predicted']]
+    fact_listing = fact_listing[['id', 'property_id', 'location_id', 'amenities_id', 'date_id', 'price', 'predicted']]
     
     return dim_property_details, dim_property, dim_amenities, dim_location, dim_date, fact_listing
     
 
 @func_time
-def load_data(transformed_data) -> str:
-    # building a star schema and loading csv files.
-    return "Data Was Loaded Succesfully!"
+def load_data(dim_property_details, dim_property, dim_amenities, dim_location, dim_date, fact_listing) -> str:
+    """
+    Loads transformed and normalized data into a PostgreSQL data warehouse.
+
+    This function performs the following steps:
+    1. Creates a star schema consisting of fact and dimension tables from the provided data.
+    2. Loads the data from CSV files into the corresponding tables in the PostgreSQL data warehouse.
+
+    Parameters:
+    - dim_property_details: Data for the property details dimension table.
+    - dim_property: Data for the property dimension table.
+    - dim_amenities: Data for the amenities dimension table.
+    - dim_location: Data for the location dimension table.
+    - dim_date: Data for the date dimension table.
+    - fact_listing: Data for the fact table, containing the core business metrics.
+
+    Returns:
+    - str: A message indicating the status of the data loading process.
+    """
+    user = 'postgres'
+    password = 'anon'
+    host = 'localhost'
+    port = '5432'
+    database = 'houses'
+    connection_str = f'postgresql://{user}:{password}@{host}:{port}/{database}'
+
+    # SQLAlchemy engine
+    engine = create_engine(connection_str)
+    
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    session.execute(text('TRUNCATE TABLE dim_property_details CASCADE'))
+    session.execute(text('TRUNCATE TABLE dim_property CASCADE'))
+    session.execute(text('TRUNCATE TABLE dim_amenities CASCADE'))
+    session.execute(text('TRUNCATE TABLE dim_location CASCADE'))
+    session.execute(text('TRUNCATE TABLE dim_date CASCADE'))
+    session.execute(text('TRUNCATE TABLE fact_listing CASCADE'))
+
+    session.commit()
+    session.close()
+    
+    dim_property_details.to_sql('dim_property_details', con=engine, if_exists='append', index=False)
+    dim_property.to_sql('dim_property', con=engine, if_exists='append', index=False)
+    dim_amenities.to_sql('dim_amenities', con=engine, if_exists='append', index=False)
+    dim_location.to_sql('dim_location', con=engine, if_exists='append', index=False)
+    dim_date.to_sql('dim_date', con=engine, if_exists='append', index=False)
+    fact_listing.to_sql('fact_listing', con=engine, if_exists='append', index=False)
+    
+    return "Data Was Loaded Successfully!"
 
 def main():
     # Extract
     products = r'.\data\products'
-    sellers = r'.\data\sellers.csv'
-    products_data, sellers_data = extract_data(products, sellers)
+    products_data = extract_data(products)
     # Transform
-    #transformed_data = transform_data(products_data, sellers_data)
+    cleaned_data = cleanining(products_data)
+    dim_property_details, dim_property, dim_amenities, dim_location, dim_date, fact_listing = normalization(cleaned_data)
     # Load
-    #load_data(transformed_data)
+    load_data(dim_property_details, dim_property, dim_amenities, dim_location, dim_date, fact_listing)
     
-    
-if __name__ == '_main__':
+if __name__ == '__main__':
     main()
