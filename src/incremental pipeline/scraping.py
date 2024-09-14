@@ -91,7 +91,7 @@ def scrape_prodcuts_data(links:pd.DataFrame) -> str:
     print(len(links))
     df = []
     i=1
-    for row in range(1, len(links)+1):
+    for row in range(len(links)):
         link = links.loc[row,'link']        
         r = requests.get(link)
         # make this a recursive function
@@ -129,7 +129,7 @@ def scrape_prodcuts_data(links:pd.DataFrame) -> str:
         
         df.append(data)
         if i==len(links):
-            pd.DataFrame(df).to_csv(f'data/incremental/products/products-{(datetime.datetime().now())}.csv',index_label=False, mode='a')
+            pd.DataFrame(df).to_csv(f'data/incremental/products/products-{(time.time())}.csv',index_label=False, mode='a')
         i+=1
     return "Scraping Products is Done!"
 

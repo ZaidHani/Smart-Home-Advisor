@@ -93,7 +93,7 @@ def scrape_prodcuts_data(links:pd.DataFrame) -> str:
     print(len(links))
     df = []
     i=1
-    for row in range(1, len(links)+1):
+    for row in range(len(links)):
         link = links.loc[row,'link']        
         r = requests.get(link)
         # make this a recursive function
