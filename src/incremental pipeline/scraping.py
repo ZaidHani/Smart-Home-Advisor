@@ -129,7 +129,7 @@ def scrape_prodcuts_data(links:pd.DataFrame) -> str:
         
         df.append(data)
         if i==len(links):
-            pd.DataFrame(df).to_csv(f'data/incremental/products/products-{(time.time())}.csv',index_label=False, mode='a')
+            pd.DataFrame(df).to_csv(f'data/incremental/products.csv',index_label=False, mode='w')
         i+=1
     return "Scraping Products is Done!"
 
