@@ -37,7 +37,7 @@ def scrape_links(URL:str, pages:int) -> str:
         url = f'{URL}&page={i}'
         r = requests.get(url) 
         soup = BeautifulSoup(r.content)
-        table = soup.find('section', attrs = {'id':'serpMainContent'})
+        table = soup.find('div', attrs = {'id':'serpMainContent'})
         for row in table.findAll('a', {'class':re.compile('sc-c5dfb32c-0 iFqGap postItem flex flexWrap mb-32 relative radius-8 grayHoverBg whiteBg boxShadow2 blackColor p-16')}): 
             data = {}
             data['id'] = row['href'][11:20]
@@ -173,14 +173,14 @@ def main():
     # ------Scraping Listings Links------
     # this has already been done so no need to run this function again.
     URL = 'https://jo.opensooq.com/en/real-estate-for-sale/all?search=true&sort_code=recent'
-    pages = 1122 # this number might change, go to the link above and see how many pages are there
+    pages = 369 # this number might change, go to the link above and see how many pages are there
     scrape_links(URL, pages)
     
     # ------Scraping Products Data------
     # redo the scraping, for 2 reasons:
         # 1- most of the data will be gone by the time you read this
         # 2- the data scraped is not complete, we are missing about 2K rows
-    links = pd.read_csv('data/initial/links.csv')
+    links = pd.read_csv('data\initial\links.csv')
     scrape_prodcuts_data(links)
 
     # ------Scraping Sellers Data------

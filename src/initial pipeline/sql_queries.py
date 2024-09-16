@@ -2,7 +2,7 @@ import psycopg2
 
 # Setting Up the Database:
 try:
-    conn = psycopg2.connect("user='postgres' host='localhost' password='anon' port='5432'")
+    conn = psycopg2.connect("user='postgres' host='localhost' password='mdkn' port='5432'")
 except:
     print("Unable to connect to the database")
 cursor = conn.cursor()
@@ -16,7 +16,7 @@ conn.close()
 
 # Creating the Tables
 try:
-    conn = psycopg2.connect("dbname='houses' user='postgres' host='localhost' password='anon' port='5432'")
+    conn = psycopg2.connect("dbname='houses' user='postgres' host='localhost' password='mdkn' port='5432'")
 except:
     print("Unable to connect to the database")
 cursor = conn.cursor()

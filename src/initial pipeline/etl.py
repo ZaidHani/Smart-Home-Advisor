@@ -107,7 +107,6 @@ def cleanining(products_df: pd.DataFrame) -> pd.DataFrame:
     products_df['google_maps_locatoin_link'] = products_df['google_maps_locatoin_link'].fillna('Unavailable Link')
 
     products_df['price'] = products_df['price'].str.replace('\D+', '', regex=True)
-    products_df['price'].fillna(0,inplace=True)
     products_df['price'] = products_df['price'].astype('float')
     
     products_df['predicted'] = False
@@ -145,6 +144,9 @@ def cleanining(products_df: pd.DataFrame) -> pd.DataFrame:
     products_df.rename(str.lower, axis='columns', inplace=True)
     products_df.columns = products_df.columns.str.replace(' ', '_')
     products_df.columns = products_df.columns.str.replace('?', '')
+    products_df = products_df[products_df['price'] > 1000]
+    products_df.dropna(subset=['price'], inplace=True)
+    products_df = products_df[products_df['price'] > 1000]
 
     return products_df
 
@@ -227,7 +229,9 @@ def normalization(products_df:pd.DataFrame) -> tuple:
     fact_listing = fact_listing.merge(dim_date, 
                                     on=['timestamp'],
                                     how='left')
-    fact_listing = fact_listing[['id', 'property_id', 'location_id', 'amenities_id', 'date_id', 'price', 'predicted']]
+    fact_listing = fact_listing[['id', 'property_id', 'location_id', 'amenities_id', 'date_id', 'price']]
+
+    fact_listing.drop_duplicates('id', inplace=True)
     
     return dim_property_details, dim_property, dim_amenities, dim_location, dim_date, fact_listing
     
@@ -253,7 +257,7 @@ def load_data(dim_property_details, dim_property, dim_amenities, dim_location, d
     - str: A message indicating the status of the data loading process.
     """
     user = 'postgres'
-    password = 'anon'
+    password = 'mdkn'
     host = 'localhost'
     port = '5432'
     database = 'houses'
@@ -275,7 +279,6 @@ def load_data(dim_property_details, dim_property, dim_amenities, dim_location, d
     session.commit()
     session.close()
     
-    # if_exists='append' because I want to keep the tables datatypes
     dim_property_details.to_sql('dim_property_details', con=engine, if_exists='append', index=False)
     dim_property.to_sql('dim_property', con=engine, if_exists='append', index=False)
     dim_amenities.to_sql('dim_amenities', con=engine, if_exists='append', index=False)
@@ -287,7 +290,7 @@ def load_data(dim_property_details, dim_property, dim_amenities, dim_location, d
 
 def main():
     # Extract
-    products = r'.\data\initial\products'
+    products = 'data/initial/products'
     products_data = extract_data(products)
     # Transform
     cleaned_data = cleanining(products_data)
