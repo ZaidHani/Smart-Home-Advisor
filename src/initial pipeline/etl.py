@@ -275,6 +275,7 @@ def load_data(dim_property_details, dim_property, dim_amenities, dim_location, d
     session.commit()
     session.close()
     
+    # if_exists='append' because I want to keep the tables datatypes
     dim_property_details.to_sql('dim_property_details', con=engine, if_exists='append', index=False)
     dim_property.to_sql('dim_property', con=engine, if_exists='append', index=False)
     dim_amenities.to_sql('dim_amenities', con=engine, if_exists='append', index=False)
@@ -286,7 +287,7 @@ def load_data(dim_property_details, dim_property, dim_amenities, dim_location, d
 
 def main():
     # Extract
-    products = r'.\data\products'
+    products = r'.\data\initial\products'
     products_data = extract_data(products)
     # Transform
     cleaned_data = cleanining(products_data)
