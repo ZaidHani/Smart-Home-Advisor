@@ -116,7 +116,7 @@ def scrape_prodcuts_data(links:pd.DataFrame) -> str:
         data['lat'] = coordinates[1] if coordinates else None
         data['owner_link'] = safe_extract(lambda: 'https://opensooq.com' + soup.find('section', {'id': 'PostViewOwnerCard'}).a.get("href"))
         data['price'] = links.loc[row,'price']
-        data['timestamp'] = datetime.datetime.now()
+        data['timestamp'] = datetime.datetime.now() # replace this one with the actual date that they put in open sooq
         # This for loop extracts all the data in the information section of the product's page including the building's rooms, bathrooms, age and more
         ul = soup.find('ul', attrs={'class':re.compile('flex flexSpaceBetween flexWrap mt-8')})
         try:

@@ -4,7 +4,6 @@ import datetime
 from sqlalchemy import exc, create_engine
 import psycopg2
 
-
 def extract_data(products_path:str) -> pd.DataFrame:
     """
     Reads a CSV file from the specified file path and returns it as a pandas DataFrame.
@@ -40,6 +39,8 @@ def cleanining(products_df: pd.DataFrame) -> pd.DataFrame:
                      axis=1, inplace=True,errors='ignore')
     products_df.dropna(subset=['id', 'owner'], inplace=True)
     products_df.drop_duplicates(inplace=True)
+    products_df.drop_duplicates(subset=['id'], inplace=True)
+
 
     products_df['images'] = products_df['images'].fillna('No Images')
 
@@ -62,6 +63,7 @@ def cleanining(products_df: pd.DataFrame) -> pd.DataFrame:
     products_df['price'] = products_df['price'].astype('float')
     
     products_df['predicted'] = False
+    products_df['timestamp'] = pd.to_datetime(products_df['timestamp'])
 
     products_df['area'] = products_df['Land Area'].fillna(products_df['Surface Area'])
     products_df['area'] = products_df['area'].str.replace('\D+', '', regex=True)
@@ -100,84 +102,6 @@ def cleanining(products_df: pd.DataFrame) -> pd.DataFrame:
     return products_df
 
 
-def normalization(products_df:pd.DataFrame) -> tuple:
-    """
-    Normalizes the given dataframes to prepare them for efficient storage in a data warehouse.
-    
-    The function restructures the data into smaller, related tables that follow database 
-    normalization principles. This helps reduce redundancy and ensures optimized querying 
-    in the data warehouse. The data is split into fact and dimension tables, where appropriate.
-
-    Parameters:
-    ----------
-    products_df : pd.DataFrame
-        A pandas DataFrame containing product data to be normalized.
-        
-    sellers_df : pd.DataFrame
-        A pandas DataFrame containing seller data to be normalized.
-
-    Returns:
-    -------
-    tuple of pd.DataFrame
-        A tuple containing the normalized tables, ready for loading into the data warehouse.
-        For example:
-        (dim_property_details, dim_property, dim_amenities, dim_location, dim_date, fact_listing)."""
-    # Sub Dimensional Table
-    dim_property_details = products_df[['zoned_for', 'facade', 'property_mortgaged', 'payment_method', 'subcategory', 'bedrooms', 'bathrooms', 
-                                'furnished', 'floor', 'building_age', 'number_of_floors']]
-    dim_property_details = dim_property_details.drop_duplicates()
-    dim_property_details = dim_property_details[['details_id', 'zoned_for', 'facade', 'property_mortgaged', 'payment_method', 'subcategory', 'bedrooms', 
-                                             'bathrooms', 'furnished', 'floor', 'building_age', 'number_of_floors']]
-    # Dimension Tables
-    dim_property = products_df[['title', 'link', 'images', 'description', 'area', 'owner', 'owner_link', 'nearby',
-                            'zoned_for', 'facade', 'property_mortgaged', 'payment_method', 'subcategory', 'bedrooms', 'bathrooms', 
-                            'furnished', 'floor', 'building_age', 'number_of_floors']]
-    dim_property = dim_property.drop_duplicates()
-    dim_property = dim_property.merge(dim_property_details, 
-                                    on=['zoned_for', 'facade', 'property_mortgaged', 'payment_method', 'subcategory', 'bedrooms', 'bathrooms', 
-                                        'furnished', 'floor', 'building_age', 'number_of_floors'],
-                                    how='left')
-    dim_property = dim_property[['property_id', 'details_id', 'title', 'link', 'images', 'description', 'area', 'owner', 'owner_link', 'nearby']]
-    
-    dim_amenities = products_df[['main_amenities', 'additional_amenities']]
-    dim_amenities = dim_amenities.drop_duplicates()
-    dim_amenities = dim_amenities[['amenities_id', 'main_amenities', 'additional_amenities']]
-    
-    dim_location = products_df[['google_maps_locatoin_link', 'long', 'lat', 'city', 'neighborhood']]
-    dim_location = dim_location.drop_duplicates()
-    dim_location = dim_location[['location_id', 'google_maps_locatoin_link', 'long', 'lat', 'city', 'neighborhood']]
-    
-    # delete that it is only for testing
-    products_df['timestamp'] = datetime.datetime.now()
-
-    dim_date = pd.DataFrame(products_df['timestamp'])
-    dim_date['year'] = dim_date['timestamp'].dt.year
-    dim_date['month'] = dim_date['timestamp'].dt.month
-    dim_date['day'] = dim_date['timestamp'].dt.day
-    dim_date['hour'] = dim_date['timestamp'].dt.hour
-    dim_date['minute'] = dim_date['timestamp'].dt.minute
-    dim_date['second'] = dim_date['timestamp'].dt.second
-    dim_date = dim_date.drop_duplicates()
-    dim_date = dim_date[['date_id', 'timestamp', 'year', 'month', 'day', 'hour', 'minute', 'second']]
-    
-    # Fact Table
-    fact_listing = products_df.merge(dim_property, 
-                                 on=['title', 'link', 'images', 'description', 'area', 'owner', 'owner_link', 'nearby'],
-                                 how='left')
-    fact_listing = fact_listing.merge(dim_amenities, 
-                                    on=['main_amenities', 'additional_amenities'],
-                                    how='left')
-    fact_listing = fact_listing.merge(dim_location, 
-                                    on=['google_maps_locatoin_link', 'long', 'lat', 'city', 'neighborhood'],
-                                    how='left')
-    fact_listing = fact_listing.merge(dim_date, 
-                                    on=['timestamp'],
-                                    how='left')
-    fact_listing = fact_listing[['id', 'property_id', 'location_id', 'amenities_id', 'date_id', 'price', 'predicted']]
-    
-    return dim_property_details, dim_property, dim_amenities, dim_location, dim_date, fact_listing
-
-
 class DatabaseConnection:
     def __init__(self, user, password, host, port, database):
         self.user = user
@@ -196,103 +120,142 @@ class DatabaseConnection:
         cursor = conn.cursor()
         return cursor, conn
 
-    def close_database(self, cursor, conn):
-        cursor.close()
-        conn.close()
-
     def make_sql_engine(self):
         engine = f'postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}'
         return engine
 
-def load_dimention_table(dataframe:pd.DataFrame, table:str, table_primary_key:str, df_columns:list[str]):
-    connection = DatabaseConnection(user='postgres', password='anon', host='localhost', port='5432', database='houses')
-    cursor, conn = connection.connect_to_database()
-    engine = connection.make_sql_engine()
-    try:
-        cursor.execute(f'SELECT * FROM {table};')
-        result = cursor.fetchall()
-        result = [element[1:] for element in result]
-        x = []
-        for i in range(len(dataframe)):
-            tuple_to_add = tuple(dataframe.loc[i])
-            if tuple_to_add in result:
-                continue
-            else:
-                x.append(tuple_to_add)
-        dataframe = pd.DataFrame(x, columns=df_columns)
-        if len(x) > 0:
-            dataframe.to_sql(name=table, con=engine, index=False, if_exists='append')
-        else:
-            print('No New Data For This Dimension')
-    except exc.IntegrityError:
-        print('Duplicate Index')
-        cursor.execute(f'SELECT MAX({table_primary_key}) FROM {table};')
-        last_id = cursor.fetchone()
-        cursor.execute(f'SELECT nextval(pg_get_serial_sequence({table}, {table_primary_key}));')
-        next_id = cursor.fetchone()
-        if next_id[0] - last_id[0] < 3:
-            cursor.execute(f'''
-            SELECT 
-                setval(pg_get_serial_sequence({table}, {table_primary_key}), 
-                (SELECT MAX({table_primary_key}) FROM {table}) + 1);''')
-        load_dimention_table(dataframe)
-    connection.close_database(cursor, conn)
-    
-def load_fact_table(fact_table):
-    connection = DatabaseConnection()
-    engine = connection.make_sql_engine()
-    fact_table.to_sql('fact_listing', con=engine, if_exists='append', index=False)
+class Load:
+    def __init__(self, df:pd.DataFrame, table:str, id:str):
+        self.df = df
+        self.table = table
+        self.id = id
 
     
+    def normalize_dim_table(self):
+        self.df = self.df.drop_duplicates()
+        self.df = self.df.reset_index()
+        self.df = self.df.drop(columns=self.df.columns[0], axis=1)
+
+    
+    def normalize_fact_table(self, list_of_tables, tables_columns, final_schema, engine):
+        self.df = self.df.drop_duplicates()
+        for i in range(len(list_of_tables)):
+            table_to_merge = pd.read_sql(f'SELECT * FROM {list_of_tables[i]}', con=engine)
+            self.df = self.df.merge(table_to_merge,
+                         on=tables_columns[i],
+                         how='left')
+        self.df = self.df[final_schema]
+        if self.df.columns[0]=='id':
+            print(len(self.df['id']))
+            fact_listing_id = pd.read_sql('SELECT id FROM fact_listing;', con=engine)
+            for j in self.df['id']:
+                if j in list(fact_listing_id['id']):
+                    self.df = self.df[self.df['id'] != j]
+        self.df.reset_index(inplace=True, drop=True)
+
+
+    
+    def load_table(self, cursor, engine):
+        try:
+            cursor.execute(f'SELECT * FROM {self.table};')
+            result = cursor.fetchall()
+            result = [i[1:] for i in result]
+            x = []
+            for i in range(len(self.df)):
+                tuple_to_add = tuple(self.df.loc[i])
+                if tuple_to_add in result:
+                    continue
+                else:
+                    x.append(tuple_to_add)
+            self.df = pd.DataFrame(x, columns=list(self.df.columns))
+            if len(x) > 0:
+                self.df.to_sql(name=self.table, con=engine, index=False, if_exists='append')
+            else:
+                print('No New Data For This Dimension')
+        except exc.IntegrityError:
+            print('Duplicate Index')
+            cursor.execute(f'SELECT MAX({self.id}) FROM {self.table};')
+            last_id = cursor.fetchone()
+            cursor.execute(f"SELECT nextval(pg_get_serial_sequence('{self.table}', '{self.id}'));")
+            next_id = cursor.fetchone()
+            # Sometimes the next id will be None idk why so i added this
+            if next_id[0] - last_id[0] < 3:
+                cursor.execute(f'''
+                SELECT 
+                    setval(pg_get_serial_sequence('{self.table}', '{self.id}'), 
+                    (SELECT MAX({self.id}) FROM {self.table}) + 1);''')
+            self.df.to_sql(name=self.table, con=engine, index=False, if_exists='append') # or load_table() again idk
     
 def main():
     # Extract
     products = r'.\data\incremental\products.csv'
     products_data = extract_data(products)
+    
     # Transform
     cleaned_data = cleanining(products_data)
-    dim_property_details, dim_property, dim_amenities, dim_location, dim_date, fact_listing = normalization(cleaned_data)
-    # Loading Tables
-    # Load The Sub Dimensional Table 'dim_property_details'
-    dim_property_details_columns = ['zoned_for', 'facade', 'property_mortgaged', 'payment_method', 'subcategory', 
-                                    'bedrooms', 'bathrooms', 'furnished', 'floor', 'building_age', 'number_of_floors']
-    load_dimention_table(
-        data_frame=dim_property_details, 
-        table='dim_property_details', 
-        table_primary_key='details_id', 
-        df_columns=dim_property_details_columns)
     
-    # Loadint All The Dimension Tables
-    dim_property_columns = ['details_id', 'title', 'link', 'images', 'description', 'area', 'owner', 'owner_link', 'nearby']
-    load_dimention_table(
-        data_frame=dim_property, 
-        table='dim_property', 
-        table_primary_key='property_id', 
-        df_columns=dim_property_columns)
+    # Loading & Normalizing Tables
+    c = DatabaseConnection(user='postgres', password='anon', host='localhost', port='5432', database='houses')
+    cursor, conn = c.connect_to_database()
+    engine = c.make_sql_engine()
     
-    dim_amenities_columns = ['main_amenities', 'additional_amenities']
-    load_dimention_table(
-        data_frame=dim_amenities, 
-        table='dim_amenities', 
-        table_primary_key='amenities_id', 
-        df_columns=dim_amenities_columns)
+    # Starting with sub dimensional tables and dimention tables with no children
+    dim_property_details = cleaned_data[['zoned_for', 'facade', 'property_mortgaged', 'payment_method', 'subcategory', 
+                                    'bedrooms', 'bathrooms', 'furnished', 'floor', 'building_age', 'number_of_floors']]
+    l = Load(df=dim_property_details, table='dim_property_details', id='details_id')
+    l.normalize_dim_table()
+    l.load_table(cursor,engine)
 
-    dim_location_columns = ['google_maps_locatoin_link', 'long', 'lat', 'city', 'neighborhood']
-    load_dimention_table(
-        data_frame=dim_location, 
-        table='dim_location', 
-        table_primary_key='location_id', 
-        df_columns=dim_location_columns)
+    dim_amenities = cleaned_data[['main_amenities', 'additional_amenities']]
+    l = Load(df=dim_amenities, table='dim_amenities', id='amenities_id')
+    l.normalize_dim_table()
+    l.load_table(cursor,engine)
 
-    dim_date_columns = ['timestamp', 'year', 'month', 'day', 'hour', 'minute', 'second']
-    load_dimention_table(
-        data_frame=dim_date, 
-        table='dim_date', 
-        table_primary_key='date_id', 
-        df_columns=dim_date_columns)
+    dim_location = cleaned_data[['google_maps_locatoin_link', 'long', 'lat', 'city', 'neighborhood']]
+    l = Load(df=dim_location, table='dim_location', id='location_id')
+    l.normalize_dim_table()
+    l.load_table(cursor,engine)
+
+    dim_date = pd.DataFrame(cleaned_data['timestamp'])
+    dim_date['year'] = dim_date['timestamp'].dt.year
+    dim_date['month'] = dim_date['timestamp'].dt.month
+    dim_date['day'] = dim_date['timestamp'].dt.day
+    dim_date['hour'] = dim_date['timestamp'].dt.hour
+    dim_date['minute'] = dim_date['timestamp'].dt.minute
+    dim_date['second'] = dim_date['timestamp'].dt.second
+    dim_date = dim_date.drop_duplicates()
+    dim_date = dim_date[['timestamp', 'year', 'month', 'day', 'hour', 'minute', 'second']]
+    l = Load(df=dim_date, table='dim_date', id='date_id')
+    l.normalize_dim_table()
+    l.load_table(cursor,engine)
     
-    # Load the Fact Table
-    load_fact_table(fact_listing)
+    # Loading The Fact Table and the Super Dimention Table
+    dim_property = cleaned_data[['title', 'link', 'images', 'description', 'area', 'owner', 'owner_link', 'nearby',
+                                'zoned_for', 'facade', 'property_mortgaged', 'payment_method', 'subcategory', 'bedrooms', 'bathrooms', 
+                                'furnished', 'floor', 'building_age', 'number_of_floors']]
+    list_of_tables = ['dim_property_details']
+    tables_columns = [list(dim_property_details.columns)]
+    final_schema = ['details_id', 'title', 'link', 'images', 'description', 'area', 'owner', 'owner_link', 'nearby']
+
+    l = Load(df=dim_property, id='property_id', table='dim_property')
+    l.normalize_fact_table(list_of_tables=list_of_tables, tables_columns=tables_columns, final_schema=final_schema, engine=engine)
+    l.load_table(cursor, engine)
     
+    dim_property = l.df
+    
+    fact_listing = cleaned_data
+    list_of_tables = ['dim_property', 'dim_location', 'dim_amenities', 'dim_date']
+    dim_property = dim_property.drop('details_id', axis=1)
+
+    tables_columns = [list(dim_property.columns), list(dim_location.columns), list(dim_amenities.columns), ['timestamp']]
+    final_schema = ['id', 'property_id', 'location_id', 'amenities_id', 'date_id', 'price', 'predicted']
+
+    l = Load(df=fact_listing, id='id', table='fact_listing')
+    l.normalize_fact_table(list_of_tables=list_of_tables, tables_columns=tables_columns, final_schema=final_schema, engine=engine)
+    
+    l.load_table(cursor, engine)
+    # Closing The Database Connection
+    cursor.close()
+    conn.close()
 if __name__ == '__main__':
     main()
