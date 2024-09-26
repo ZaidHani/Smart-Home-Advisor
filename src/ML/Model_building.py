@@ -5,6 +5,8 @@ import psycopg2
 import os
 import logging
 from pycaret.regression import *
+import mlflow
+import mlflow.sklearn  # For tracking the final model
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -27,14 +29,15 @@ def extract_data(db_url: str) -> pd.DataFrame:
         
         # Open a connection to the database and execute the SQL query
         with engine.connect() as connection:
-            query = """
-                SELECT long, lat, city, neighborhood, area, subcategory, facade, 
-                       payment_method, bedrooms, bathrooms, furnished, floor, 
+            query = """                                                                
+                SELECT long, lat, city, neighborhood, area, subcategory, facade,
+                       bedrooms, bathrooms, furnished, floor,
                        building_age, price
                 FROM fact_listing FL
                 LEFT JOIN dim_location DL ON DL.location_id = FL.location_id
                 LEFT JOIN dim_property DP ON DP.property_id = FL.property_id
                 LEFT JOIN dim_property_details DPD ON DPD.details_id = DP.details_id
+                WHERE subcategory != 'Lands for Sale'
             """
             logging.info('Executing query...')
             
@@ -51,7 +54,7 @@ def extract_data(db_url: str) -> pd.DataFrame:
 
 def build_model(data: pd.DataFrame, target_column: str, save_path: str):
     """
-    Sets up the PyCaret environment, trains a regression model, and saves it.
+    Sets up the PyCaret environment, trains a regression model, logs metrics, and saves the model.
 
     Args:
         data (pd.DataFrame): The input dataset for model training.
@@ -64,11 +67,22 @@ def build_model(data: pd.DataFrame, target_column: str, save_path: str):
     logging.info('Setting up PyCaret environment...')
     
     try:
-        # Initialize the PyCaret regression setup with the provided dataset and target column
-        s = setup(data, target=target_column, session_id=123, verbose=False)
         
+        # Initialize MLflow tracking
+        mlflow.start_run()
+
+        # Initialize the PyCaret regression setup with the provided dataset and target column
+        s = setup(data, target=target_column, log_experiment=True, experiment_name='Data without land',
+                  session_id=123)
+
         # Compare multiple models and select the best one
         model = compare_models()
+
+        # Tune the best model
+        model = tune_model(model)
+
+        # Finalize the tuned model
+        model = finalize_model(model)
         
         logging.info(f'Model training completed. Best model: {model}')
         
@@ -79,11 +93,27 @@ def build_model(data: pd.DataFrame, target_column: str, save_path: str):
         save_model(model, save_path)
         
         logging.info(f'Model saved at {save_path}')
+
+        # Log the model to MLflow using sklearn since PyCaret's model is compatible
+        mlflow.sklearn.log_model(model, artifact_path='model')
+
+        # Retrieve and log performance metrics
+        metrics = pull()  # Pull the metrics from the latest model training/tuning
+
+        # Log specific metrics to MLflow
+        mlflow.log_metric("MAE", metrics["MAE"].iloc[0])
+        mlflow.log_metric("MSE", metrics["MSE"].iloc[0])
+        mlflow.log_metric("RMSE", metrics["RMSE"].iloc[0])
+        mlflow.log_metric("R2", metrics["R2"].iloc[0])
+        
+        mlflow.end_run()
+
         return model
 
     except Exception as e:
         # Log any errors that occur during model building or saving
         logging.error(f"Error in building or saving model: {e}")
+        mlflow.end_run(status='FAILED')
         raise
 
 def main():
