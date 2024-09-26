@@ -6,6 +6,8 @@ import numpy as np
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 import datetime
+from sklearn.preprocessing import LabelEncoder
+
 
 import time
 
@@ -86,14 +88,26 @@ def cleanining(products_df: pd.DataFrame) -> pd.DataFrame:
     pd.DataFrame
         A cleaned products DataFrame ready to be normalized.
     """
-    products_df.drop(['Real Estate Type', 'Country', 'Reference ID', 'Category', 'Property Status', 'Lister Type'], axis=1, inplace=True)
-    products_df.dropna(subset=['id', 'owner'], inplace=True)
-    products_df.drop_duplicates(inplace=True)
+    ####################################################################
+    products_df.drop_duplicates('id', inplace = True)
 
-    products_df['images'] = products_df['images'].fillna('No Images')
+    products_df.dropna(subset='id', inplace = True)
+    products_df['id'] = products_df['id'].astype('int64').astype('str')
 
-    # Dealing With Coordinates
-    # Group by city and neighbourhood, and compute the average longitude and latitude
+    products_df['title'].fillna('There is no title', inplace = True)
+
+    products_df = products_df[(products_df['Country'] == 'Jordan') | (products_df['Country'].isnull() == True)]
+
+    products_df['images'].fillna('No image', inplace= True)
+
+    products_df['description'].fillna('There is no description', inplace = True)
+
+    products_df.dropna(subset = ['owner'], inplace = True)
+
+    products_df['reviews'].fillna(0, inplace = True)
+
+    products_df['google_maps_locatoin_link'].fillna('Unavailable Link', inplace = True)
+
     avg_coords = products_df.groupby(['City', 'Neighborhood'])[['long', 'lat']].mean().reset_index()
     # Merge the average coordinates back to the original DataFrame
     products_df = pd.merge(products_df, avg_coords, on=['City', 'Neighborhood'], suffixes=('', '_avg'), how='left')
@@ -104,51 +118,136 @@ def cleanining(products_df: pd.DataFrame) -> pd.DataFrame:
     products_df.drop(columns=['long_avg', 'lat_avg'], inplace=True)
     products_df.dropna(subset=['long','lat'], inplace=True)
 
-    products_df['google_maps_locatoin_link'] = products_df['google_maps_locatoin_link'].fillna('Unavailable Link')
+    # products_df.drop(['Real Estate Type', 'Country', 'Reference ID', 'Category', 'Property Status', 'Lister Type', 'Additional Amenities'], axis=1, inplace=True)
 
+    products_df.drop(['Real Estate Type', 'Country', 'Reference ID', 'Category', 'Property Status', 'Lister Type'], axis=1, inplace=True, errors='ignore')
+
+    products_df.dropna(subset = 'price', inplace = True) 
     products_df['price'] = products_df['price'].str.replace('\D+', '', regex=True)
-    products_df['price'].fillna(0,inplace=True)
-    products_df['price'] = products_df['price'].astype('float')
-    
-    products_df['predicted'] = False
+    products_df['price'] = products_df['price'].astype('int')
+
+
+    # products_df['predicted'] = False
 
     products_df['area'] = products_df['Land Area'].fillna(products_df['Surface Area'])
     products_df['area'] = products_df['area'].str.replace('\D+', '', regex=True)
     products_df.dropna(subset=['area'], inplace=True)
     products_df.drop(['Land Area', 'Surface Area'], axis=1, inplace=True)
     products_df['area'] = products_df['area'].astype('int')
+    products_df = products_df[(products_df['area'] >= 75) & (products_df['area'] <= 1000000)] ###
+
+    products_df['Facade'].fillna('Not mentioned', inplace=True)
+    products_df['Property Mortgaged?'].fillna('Not mentioned', inplace=True)
+    products_df['Payment Method'].fillna('Not mentioned', inplace=True)
+    products_df['Nearby'].fillna('Not mentioned', inplace=True)
+    products_df['Main Amenities'].fillna('Not mentioned', inplace=True)
+    # products_df['Additional Amenities'].fillna('Not mentioned', inplace=True)
 
     products_df['Zoned for'].fillna('Not a land', inplace=True)
-    products_df['Facade'].fillna('Unknown', inplace=True)
-    products_df['Property Mortgaged?'].fillna('Unknown', inplace=True)
-    products_df['Payment Method'].fillna('Unknown', inplace=True)
-    products_df['Nearby'].fillna('Unknown', inplace=True)
-    products_df['Main Amenities'].fillna('Unknown', inplace=True)
-    products_df['Additional Amenities'].fillna('Unknown', inplace=True)
 
     columns_to_fill = ['Bedrooms', 'Bathrooms', 'Furnished?', 'Floor', 'Building Age', 'Number of Floors']
     for col in columns_to_fill:
-        products_df[col] = np.where(products_df[col].isna() & (products_df['Zoned for'] == 'Not a Land'), 'Unknown', products_df[col])
+        products_df[col] = np.where(products_df[col].isna() & (products_df['Zoned for'] == 'Not a land'), 'Not mentioned', products_df[col])
 
-    products_df['Bedrooms'].fillna('Not a Building', inplace=True)
-    products_df['Bathrooms'].fillna('Not a Building', inplace=True)
-    products_df['Furnished?'].fillna('Not a Building', inplace=True)
-    products_df['Floor'].fillna('Not a Building', inplace=True)
-    products_df['Building Age'].fillna('Not a Building', inplace=True)
-    products_df['Number of Floors'].fillna('Not a Building', inplace=True)
+    products_df['Bedrooms'].fillna('Not a building', inplace=True)
+    products_df['Bathrooms'].fillna('Not a building', inplace=True)
+    products_df['Furnished?'].fillna('Not a building', inplace=True)
+    products_df['Floor'].fillna('Not a building', inplace=True)
+    products_df['Building Age'].fillna('Not a building', inplace=True)
+    products_df['Number of Floors'].fillna('Not a building', inplace=True)
 
-    # Floors
-    # THE CODE BELOW IS WRONG
-    # products_df['Floor'] = np.where(products_df['Floor'] == 'Unknown', products_df['Number of Floors'], products_df['Floor'])
-    # products_df.drop('Number of Floors', axis=1, inplace=True)
-    products_df['Number of Floors'] = np.where(products_df['Number of Floors']=='Unknown',
-                                                '1 Floor', 
-                                                products_df['Number of Floors'])
+    products_df['Facade'].fillna('Not mentioned', inplace=True)
 
-    # Renaming Columns
+    df_without_land = products_df[products_df['Subcategory'] != 'Lands for Sale']
+    df_without_land.reset_index(drop = True, inplace = True)
+
+    land_df = products_df[products_df['Subcategory'] == 'Lands for Sale']
+    land_df.reset_index(drop = True, inplace = True)
+
+
+    df_without_land = df_without_land[(df_without_land['price'] >= 10000) & (df_without_land['price'] <= 1.750000e+05)]
+
+    land_df = land_df[(land_df['price']>=5000) & (land_df['price']<=1000000)]
+
+    products_df = pd.concat([df_without_land, land_df])
+
+
     products_df.rename(str.lower, axis='columns', inplace=True)
     products_df.columns = products_df.columns.str.replace(' ', '_')
     products_df.columns = products_df.columns.str.replace('?', '')
+
+    ####################################################################
+
+
+    # products_df.drop(['Real Estate Type', 'Country', 'Reference ID', 'Category', 'Property Status', 'Lister Type'], axis=1, inplace=True)
+    # products_df.dropna(subset=['id', 'owner'], inplace=True)
+    # products_df.drop_duplicates(inplace=True)
+
+    # products_df['images'] = products_df['images'].fillna('No Images')
+
+    # # Dealing With Coordinates
+    # # Group by city and neighbourhood, and compute the average longitude and latitude
+    # avg_coords = products_df.groupby(['City', 'Neighborhood'])[['long', 'lat']].mean().reset_index()
+    # # Merge the average coordinates back to the original DataFrame
+    # products_df = pd.merge(products_df, avg_coords, on=['City', 'Neighborhood'], suffixes=('', '_avg'), how='left')
+    # # Impute missing longitude and latitude with the computed average
+    # products_df['long'].fillna(products_df['long_avg'], inplace=True)
+    # products_df['lat'].fillna(products_df['lat_avg'], inplace=True)
+    # # Drop the temporary columns
+    # products_df.drop(columns=['long_avg', 'lat_avg'], inplace=True)
+    # products_df.dropna(subset=['long','lat'], inplace=True)
+
+    # products_df['google_maps_locatoin_link'] = products_df['google_maps_locatoin_link'].fillna('Unavailable Link')
+
+
+    # products_df.dropna(subset = 'price', inplace = True) 
+    # products_df['price'] = products_df['price'].str.replace('\D+', '', regex=True)
+    # products_df['price'] = products_df['price'].astype('int')
+
+    ###df_without_land = products_df[products_df['Subcategory'] != 'Lands for Sale']  #########################
+    ###df_without_land.reset_index(drop = True, inplace = True) #####################
+
+
+    # products_df = products_df[products_df['price'] >= 10000] ##########
+    # products_df = products_df[products_df['price'] <= 1.750000e+05 ] ##########################
+
+    
+    # products_df['predicted'] = False
+
+    # products_df['area'] = products_df['Land Area'].fillna(products_df['Surface Area'])
+    # products_df['area'] = products_df['area'].str.replace('\D+', '', regex=True)
+    # products_df.dropna(subset=['area'], inplace=True)
+    # products_df.drop(['Land Area', 'Surface Area'], axis=1, inplace=True)
+    # products_df['area'] = products_df['area'].astype('int')
+
+    # products_df['Zoned for'].fillna('Not a land', inplace=True)
+    # products_df['Facade'].fillna('Not mentioned', inplace=True)
+    # products_df['Property Mortgaged?'].fillna('Not mentioned', inplace=True)
+    # products_df['Payment Method'].fillna('Not mentioned', inplace=True)
+    # products_df['Nearby'].fillna('Not mentioned', inplace=True)
+    # products_df['Main Amenities'].fillna('Not mentioned', inplace=True)
+    ###################################products_df['Additional Amenities'].fillna('Not mentioned', inplace=True)
+
+    # columns_to_fill = ['Bedrooms', 'Bathrooms', 'Furnished?', 'Floor', 'Building Age', 'Number of Floors']
+    # for col in columns_to_fill:
+    #     products_df[col] = np.where(products_df[col].isna() & (products_df['Zoned for'] == 'Not a land'), 'Not mentioned', products_df[col])
+
+    # products_df['Bedrooms'].fillna('Not a building', inplace=True)
+    # products_df['Bathrooms'].fillna('Not a building', inplace=True)
+    # products_df['Furnished?'].fillna('Not a building', inplace=True)
+    # products_df['Floor'].fillna('Not a building', inplace=True)
+    # products_df['Building Age'].fillna('Not a building', inplace=True)
+    # products_df['Number of Floors'].fillna('Not a building', inplace=True)
+    # rewrite the line above, make it so when there is a 'Floor', the 'Number of Floors' is one floor, 
+    # if you don't understand write this code in a notebook and just look at it
+    # dim_property_details[['Floor', 'Number of Floors']].drop_duplicates()
+    # and also edit it so when there is more than one floor in 'Number of Floors' the column 'Floor' has the number of floors
+    
+    # Renaming Columns
+    # products_df.rename(str.lower, axis='columns', inplace=True)
+    # products_df.columns = products_df.columns.str.replace(' ', '_')
+    # products_df.columns = products_df.columns.str.replace('?', '')
+    
 
     return products_df
 
@@ -231,7 +330,9 @@ def normalization(products_df:pd.DataFrame) -> tuple:
     fact_listing = fact_listing.merge(dim_date, 
                                     on=['timestamp'],
                                     how='left')
-    fact_listing = fact_listing[['id', 'property_id', 'location_id', 'amenities_id', 'date_id', 'price', 'predicted']]
+    fact_listing = fact_listing[['id', 'property_id', 'location_id', 'amenities_id', 'date_id', 'price']]
+
+    fact_listing.drop_duplicates('id', inplace=True)
     
     return dim_property_details, dim_property, dim_amenities, dim_location, dim_date, fact_listing
     
@@ -257,7 +358,7 @@ def load_data(dim_property_details, dim_property, dim_amenities, dim_location, d
     - str: A message indicating the status of the data loading process.
     """
     user = 'postgres'
-    password = 'anon'
+    password = 'mdkn'
     host = 'localhost'
     port = '5432'
     database = 'houses'
@@ -279,7 +380,6 @@ def load_data(dim_property_details, dim_property, dim_amenities, dim_location, d
     session.commit()
     session.close()
     
-    # if_exists='append' because I want to keep the tables datatypes
     dim_property_details.to_sql('dim_property_details', con=engine, if_exists='append', index=False)
     dim_property.to_sql('dim_property', con=engine, if_exists='append', index=False)
     dim_amenities.to_sql('dim_amenities', con=engine, if_exists='append', index=False)
@@ -291,11 +391,11 @@ def load_data(dim_property_details, dim_property, dim_amenities, dim_location, d
 
 def main():
     # Extract
-    products = r'.\data\initial\products'
-    products_data = extract_data(products)
+    products = 'data/initial/products'
+    products_df = extract_data(products)
     # Transform
-    cleaned_data = cleanining(products_data)
-    dim_property_details, dim_property, dim_amenities, dim_location, dim_date, fact_listing = normalization(cleaned_data)
+    products_df = cleanining(products_df)
+    dim_property_details, dim_property, dim_amenities, dim_location, dim_date, fact_listing = normalization(products_df)
     # Load
     load_data(dim_property_details, dim_property, dim_amenities, dim_location, dim_date, fact_listing)
     
