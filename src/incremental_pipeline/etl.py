@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-import datetime
+import datetime as dt
 from sqlalchemy import exc, create_engine
 import psycopg2
 
@@ -35,7 +35,7 @@ def cleanining(products_df: pd.DataFrame) -> pd.DataFrame:
     pd.DataFrame
         A cleaned products DataFrame ready to be normalized.
     """
-    products_df.drop(['Real Estate Type', 'Country', 'Reference ID', 'Category', 'Property Status', 'Lister Type'], axis=1, inplace=True)
+    products_df.drop(['Real Estate Type', 'Country', 'Reference ID', 'Category', 'Property Status', 'Lister Type', 'Main Amenities', 'Additional Amenities'], axis=1, inplace=True, errors='ignore')
     products_df.dropna(subset=['id', 'owner'], inplace=True)
     products_df.drop_duplicates(inplace=True)
 
@@ -59,8 +59,6 @@ def cleanining(products_df: pd.DataFrame) -> pd.DataFrame:
     products_df['price'].fillna(0,inplace=True)
     products_df['price'] = products_df['price'].astype('float')
     
-    products_df['predicted'] = False
-
     products_df['area'] = products_df['Land Area'].fillna(products_df['Surface Area'])
     products_df['area'] = products_df['area'].str.replace('\D+', '', regex=True)
     products_df.dropna(subset=['area'], inplace=True)
@@ -72,8 +70,6 @@ def cleanining(products_df: pd.DataFrame) -> pd.DataFrame:
     products_df['Property Mortgaged?'].fillna('Unknown', inplace=True)
     products_df['Payment Method'].fillna('Unknown', inplace=True)
     products_df['Nearby'].fillna('Unknown', inplace=True)
-    products_df['Main Amenities'].fillna('Unknown', inplace=True)
-    products_df['Additional Amenities'].fillna('Unknown', inplace=True)
 
     columns_to_fill = ['Bedrooms', 'Bathrooms', 'Furnished?', 'Floor', 'Building Age', 'Number of Floors']
     for col in columns_to_fill:
@@ -130,13 +126,11 @@ class Load:
         self.table = table
         self.id = id
 
-    
     def normalize_dim_table(self):
         self.df = self.df.drop_duplicates()
         self.df = self.df.reset_index()
         self.df = self.df.drop(columns=self.df.columns[0], axis=1)
-
-    
+ 
     def normalize_fact_table(self, list_of_tables, tables_columns, final_schema, engine):
         self.df = self.df.drop_duplicates()
         for i in range(len(list_of_tables)):
@@ -153,8 +147,7 @@ class Load:
                 if j in list(fact_listing_id['id']):
                     self.df = self.df[self.df['id'] != j]
         self.df.reset_index(inplace=True, drop=True)
-
-    
+   
     def load_table(self, cursor, engine):
         try:
             cursor.execute(f'SELECT * FROM {self.table};')
@@ -206,16 +199,17 @@ def main():
     l.normalize_dim_table()
     l.load_table(cursor,engine)
 
-    dim_amenities = cleaned_data[['main_amenities', 'additional_amenities']]
-    l = Load(df=dim_amenities, table='dim_amenities', id='amenities_id')
-    l.normalize_dim_table()
-    l.load_table(cursor,engine)
+    # dim_amenities = cleaned_data[['main_amenities', 'additional_amenities']]
+    # l = Load(df=dim_amenities, table='dim_amenities', id='amenities_id')
+    # l.normalize_dim_table()
+    # l.load_table(cursor,engine)
 
     dim_location = cleaned_data[['google_maps_locatoin_link', 'long', 'lat', 'city', 'neighborhood']]
     l = Load(df=dim_location, table='dim_location', id='location_id')
     l.normalize_dim_table()
     l.load_table(cursor,engine)
 
+    cleaned_data['timestamp'] = pd.to_datetime(cleaned_data['timestamp'])
     dim_date = pd.DataFrame(cleaned_data['timestamp'])
     dim_date['year'] = dim_date['timestamp'].dt.year
     dim_date['month'] = dim_date['timestamp'].dt.month
@@ -245,11 +239,11 @@ def main():
     dim_property = l.df
     
     fact_listing = cleaned_data
-    list_of_tables = ['dim_property', 'dim_location', 'dim_amenities', 'dim_date']
+    list_of_tables = ['dim_property', 'dim_location', 'dim_date']
     dim_property = dim_property.drop('details_id', axis=1)
 
-    tables_columns = [list(dim_property.columns), list(dim_location.columns), list(dim_amenities.columns), ['timestamp']]
-    final_schema = ['id', 'property_id', 'location_id', 'amenities_id', 'date_id', 'price', 'predicted']
+    tables_columns = [list(dim_property.columns), list(dim_location.columns), ['timestamp']]
+    final_schema = ['id', 'property_id', 'location_id', 'date_id', 'price']
 
     l = Load(df=fact_listing, id='id', table='fact_listing')
     l.normalize_fact_table(list_of_tables=list_of_tables, tables_columns=tables_columns, final_schema=final_schema, engine=engine)

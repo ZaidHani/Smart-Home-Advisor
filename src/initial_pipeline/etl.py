@@ -110,8 +110,6 @@ def cleanining(products_df: pd.DataFrame) -> pd.DataFrame:
     products_df['price'].fillna(0,inplace=True)
     products_df['price'] = products_df['price'].astype('float')
     
-    products_df['predicted'] = False
-
     products_df['area'] = products_df['Land Area'].fillna(products_df['Surface Area'])
     products_df['area'] = products_df['area'].str.replace('\D+', '', regex=True)
     products_df.dropna(subset=['area'], inplace=True)
