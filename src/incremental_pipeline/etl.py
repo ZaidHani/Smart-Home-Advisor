@@ -145,6 +145,7 @@ class Load:
                          on=tables_columns[i],
                          how='left')
         self.df = self.df[final_schema]
+        # This probably has a problem review later because I don't think it include the dim_primary table lol
         if self.df.columns[0]=='id':
             print(len(self.df['id']))
             fact_listing_id = pd.read_sql('SELECT id FROM fact_listing;', con=engine)
@@ -152,7 +153,6 @@ class Load:
                 if j in list(fact_listing_id['id']):
                     self.df = self.df[self.df['id'] != j]
         self.df.reset_index(inplace=True, drop=True)
-
 
     
     def load_table(self, cursor, engine):
@@ -241,6 +241,7 @@ def main():
     l.normalize_fact_table(list_of_tables=list_of_tables, tables_columns=tables_columns, final_schema=final_schema, engine=engine)
     l.load_table(cursor, engine)
     
+    # This one line is to add the columns for the fact table and many more
     dim_property = l.df
     
     fact_listing = cleaned_data
@@ -257,5 +258,6 @@ def main():
     # Closing The Database Connection
     cursor.close()
     conn.close()
+    
 if __name__ == '__main__':
     main()

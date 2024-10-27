@@ -92,7 +92,13 @@ def main():
     and saving/loading of the machine learning model.
     """
     # Define the PostgreSQL database connection URL (can be made configurable)
-    db_url = 'postgresql://postgres:mdkn@localhost:5432/houses'
+    user = 'postgres'
+    password = 'anon'
+    host = 'localhost'
+    port = '5432'
+    database = 'houses'
+    db_url = f'postgresql://{user}:{password}@{host}:{port}/{database}'
+    #db_url = 'postgresql://postgres:mdkn@localhost:5432/houses'
     
     # Extract data from the database
     data = extract_data(db_url)
@@ -102,7 +108,7 @@ def main():
     print(data.head())
     
     # Define the file path for saving the trained model
-    model_save_path = 'D:/Grad-proj/ML/saved model/my-model'
+    model_save_path = 'my-model'
     
     # Build the regression model using the extracted data and save it
     model = build_model(data, target_column='price', save_path=model_save_path)

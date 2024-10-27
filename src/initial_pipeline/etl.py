@@ -86,7 +86,7 @@ def cleanining(products_df: pd.DataFrame) -> pd.DataFrame:
     pd.DataFrame
         A cleaned products DataFrame ready to be normalized.
     """
-    products_df.drop(['Real Estate Type', 'Country', 'Reference ID', 'Category', 'Property Status', 'Lister Type'], axis=1, inplace=True)
+    products_df.drop(['Real Estate Type', 'Country', 'Reference ID', 'Category', 'Property Status', 'Lister Type', 'Main Amenities', 'Additional Amenities'], axis=1, inplace=True)
     products_df.dropna(subset=['id', 'owner'], inplace=True)
     products_df.drop_duplicates(inplace=True)
 
@@ -123,8 +123,6 @@ def cleanining(products_df: pd.DataFrame) -> pd.DataFrame:
     products_df['Property Mortgaged?'].fillna('Unknown', inplace=True)
     products_df['Payment Method'].fillna('Unknown', inplace=True)
     products_df['Nearby'].fillna('Unknown', inplace=True)
-    products_df['Main Amenities'].fillna('Unknown', inplace=True)
-    products_df['Additional Amenities'].fillna('Unknown', inplace=True)
 
     columns_to_fill = ['Bedrooms', 'Bathrooms', 'Furnished?', 'Floor', 'Building Age', 'Number of Floors']
     for col in columns_to_fill:
@@ -194,11 +192,6 @@ def normalization(products_df:pd.DataFrame) -> tuple:
                                     how='left')
     dim_property = dim_property[['property_id', 'details_id', 'title', 'link', 'images', 'description', 'area', 'owner', 'owner_link', 'nearby']]
     
-    dim_amenities = products_df[['main_amenities', 'additional_amenities']]
-    dim_amenities = dim_amenities.drop_duplicates()
-    dim_amenities['amenities_id'] = range(1, len(dim_amenities)+1)
-    dim_amenities = dim_amenities[['amenities_id', 'main_amenities', 'additional_amenities']]
-    
     dim_location = products_df[['google_maps_locatoin_link', 'long', 'lat', 'city', 'neighborhood']]
     dim_location = dim_location.drop_duplicates()
     dim_location['location_id'] = range(1, len(dim_location)+1)
@@ -222,22 +215,19 @@ def normalization(products_df:pd.DataFrame) -> tuple:
     fact_listing = products_df.merge(dim_property, 
                                  on=['title', 'link', 'images', 'description', 'area', 'owner', 'owner_link', 'nearby'],
                                  how='left')
-    fact_listing = fact_listing.merge(dim_amenities, 
-                                    on=['main_amenities', 'additional_amenities'],
-                                    how='left')
     fact_listing = fact_listing.merge(dim_location, 
                                     on=['google_maps_locatoin_link', 'long', 'lat', 'city', 'neighborhood'],
                                     how='left')
     fact_listing = fact_listing.merge(dim_date, 
                                     on=['timestamp'],
                                     how='left')
-    fact_listing = fact_listing[['id', 'property_id', 'location_id', 'amenities_id', 'date_id', 'price', 'predicted']]
+    fact_listing = fact_listing[['id', 'property_id', 'location_id', 'date_id', 'price']]
     
-    return dim_property_details, dim_property, dim_amenities, dim_location, dim_date, fact_listing
+    return dim_property_details, dim_property, dim_location, dim_date, fact_listing
     
 
 @func_time
-def load_data(dim_property_details, dim_property, dim_amenities, dim_location, dim_date, fact_listing) -> str:
+def load_data(dim_property_details, dim_property, dim_location, dim_date, fact_listing) -> str:
     """
     Loads transformed and normalized data into a PostgreSQL data warehouse.
 
@@ -271,7 +261,6 @@ def load_data(dim_property_details, dim_property, dim_amenities, dim_location, d
 
     session.execute(text('TRUNCATE TABLE dim_property_details CASCADE'))
     session.execute(text('TRUNCATE TABLE dim_property CASCADE'))
-    session.execute(text('TRUNCATE TABLE dim_amenities CASCADE'))
     session.execute(text('TRUNCATE TABLE dim_location CASCADE'))
     session.execute(text('TRUNCATE TABLE dim_date CASCADE'))
     session.execute(text('TRUNCATE TABLE fact_listing CASCADE'))
@@ -282,7 +271,6 @@ def load_data(dim_property_details, dim_property, dim_amenities, dim_location, d
     # if_exists='append' because I want to keep the tables datatypes
     dim_property_details.to_sql('dim_property_details', con=engine, if_exists='append', index=False)
     dim_property.to_sql('dim_property', con=engine, if_exists='append', index=False)
-    dim_amenities.to_sql('dim_amenities', con=engine, if_exists='append', index=False)
     dim_location.to_sql('dim_location', con=engine, if_exists='append', index=False)
     dim_date.to_sql('dim_date', con=engine, if_exists='append', index=False)
     fact_listing.to_sql('fact_listing', con=engine, if_exists='append', index=False)
@@ -295,9 +283,9 @@ def main():
     products_data = extract_data(products)
     # Transform
     cleaned_data = cleanining(products_data)
-    dim_property_details, dim_property, dim_amenities, dim_location, dim_date, fact_listing = normalization(cleaned_data)
+    dim_property_details, dim_property, dim_location, dim_date, fact_listing = normalization(cleaned_data)
     # Load
-    load_data(dim_property_details, dim_property, dim_amenities, dim_location, dim_date, fact_listing)
+    load_data(dim_property_details, dim_property, dim_location, dim_date, fact_listing)
     
 if __name__ == '__main__':
     main()
