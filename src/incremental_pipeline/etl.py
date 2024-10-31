@@ -122,22 +122,49 @@ class DatabaseConnection:
 
 class Load:
     def __init__(self, df:pd.DataFrame, table:str, id:str):
+        """
+        Initializes the Load class with parameters to manage data loading.
+        
+        Parameters:
+            df (pd.DataFrame): DataFrame containing data to load.
+            table (str): Target table name for loading.
+            id (str): Primary key column name of the table to ensure unique record identification.
+        """
         self.df = df
         self.table = table
         self.id = id
 
     def normalize_dim_table(self):
+        """
+        Normalizes the DataFrame for a dimension table:
+            - Removes duplicate rows.
+            - Resets the index, removing any previous indexing.
+        """
         self.df = self.df.drop_duplicates()
         self.df = self.df.reset_index()
         self.df = self.df.drop(columns=self.df.columns[0], axis=1)
  
     def normalize_fact_table(self, list_of_tables, tables_columns, final_schema, engine):
+        """
+    Normalizes the DataFrame for a fact table:
+        - Deduplicates records in the fact table DataFrame.
+        - Merges the fact table with related dimension tables based on foreign keys.
+        - Filters out records that already exist in the database (avoiding primary key duplication).
+
+    Parameters:
+        list_of_tables (list of str): Names of dimension tables in the data warehouse.
+        tables_columns (list of str): Columns in each dimension table to merge with, corresponding to `list_of_tables`.
+        final_schema (list of str): List of columns representing the final schema for the fact table.
+        engine (SQLAlchemy Engine): Database engine used for executing SQL queries.
+        """
         self.df = self.df.drop_duplicates()
+        # Merge each dimension table with the fact table using the specified columns
         for i in range(len(list_of_tables)):
             table_to_merge = pd.read_sql(f'SELECT * FROM {list_of_tables[i]}', con=engine)
             self.df = self.df.merge(table_to_merge,
                          on=tables_columns[i],
                          how='left')
+        # Reorder columns according to the final schema and ensure primary keys are unique
         self.df = self.df[final_schema]
         # This probably has a problem review later because I don't think it include the dim_primary table lol
         if self.df.columns[0]=='id':
@@ -149,10 +176,22 @@ class Load:
         self.df.reset_index(inplace=True, drop=True)
    
     def load_table(self, cursor, engine):
+        """
+    Loads data from the DataFrame into the target table, handling duplicates and primary key constraints.
+    
+    Parameters:
+        cursor (DB Cursor): Database cursor for SQL query execution.
+        engine (SQLAlchemy Engine): Database connection engine.
+    
+    Raises:
+        IntegrityError: Raised if duplicate primary keys exist in the table.
+        """
         try:
+            # Check existing records in the target table
             cursor.execute(f'SELECT * FROM {self.table};')
             result = cursor.fetchall()
             result = [i[1:] for i in result]
+            # Add only new records not present in the table
             x = []
             for i in range(len(self.df)):
                 tuple_to_add = tuple(self.df.loc[i])
@@ -166,19 +205,22 @@ class Load:
             else:
                 print('No New Data For This Dimension')
         except exc.IntegrityError:
+            # Reset sequence if necessary
             print('Duplicate Index')
             cursor.execute(f'SELECT MAX({self.id}) FROM {self.table};')
             last_id = cursor.fetchone()
             cursor.execute(f"SELECT nextval(pg_get_serial_sequence('{self.table}', '{self.id}'));")
             next_id = cursor.fetchone()
             # Sometimes the next id will be None idk why so i added this
+            # Ensure the sequence is in sync with the table records
             if next_id[0] - last_id[0] < 3:
                 cursor.execute(f'''
                 SELECT 
                     setval(pg_get_serial_sequence('{self.table}', '{self.id}'), 
                     (SELECT MAX({self.id}) FROM {self.table}) + 1);''')
+            # Insert new records after sequence reset
             self.df.to_sql(name=self.table, con=engine, index=False, if_exists='append') # or load_table() again idk
-    
+            
 def main():
     # Extract
     products = r'.\data\incremental\products.csv'
