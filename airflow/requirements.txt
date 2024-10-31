@@ -1,0 +1,8 @@
+pycaret
+mlflow
+bs4
+beautifulsoup4
+requests
+pandas
+scrapy
+ipython
