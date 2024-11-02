@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-import datetime
+import datetime as dt
 from sqlalchemy import exc, create_engine
 import psycopg2
 
@@ -35,7 +35,8 @@ def cleanining(products_df: pd.DataFrame) -> pd.DataFrame:
     pd.DataFrame
         A cleaned products DataFrame ready to be normalized.
     """
-    products_df.drop(['Real Estate Type', 'Country', 'Reference ID', 'Category', 'Property Status', 'Lister Type'], axis=1, inplace=True)
+    products_df.drop_duplicates(subset = ['id'], inplace = True)
+    products_df.drop(['Real Estate Type', 'Country', 'Reference ID', 'Category', 'Property Status', 'Lister Type', 'Main Amenities', 'Additional Amenities'], axis=1, inplace=True)
     products_df.dropna(subset=['id', 'owner'], inplace=True)
     products_df.drop_duplicates(inplace=True)
 
@@ -59,8 +60,6 @@ def cleanining(products_df: pd.DataFrame) -> pd.DataFrame:
     products_df['price'].fillna(0,inplace=True)
     products_df['price'] = products_df['price'].astype('float')
     
-    products_df['predicted'] = False
-
     products_df['area'] = products_df['Land Area'].fillna(products_df['Surface Area'])
     products_df['area'] = products_df['area'].str.replace('\D+', '', regex=True)
     products_df.dropna(subset=['area'], inplace=True)
@@ -72,8 +71,6 @@ def cleanining(products_df: pd.DataFrame) -> pd.DataFrame:
     products_df['Property Mortgaged?'].fillna('Unknown', inplace=True)
     products_df['Payment Method'].fillna('Unknown', inplace=True)
     products_df['Nearby'].fillna('Unknown', inplace=True)
-    products_df['Main Amenities'].fillna('Unknown', inplace=True)
-    products_df['Additional Amenities'].fillna('Unknown', inplace=True)
 
     columns_to_fill = ['Bedrooms', 'Bathrooms', 'Furnished?', 'Floor', 'Building Age', 'Number of Floors']
     for col in columns_to_fill:
@@ -93,6 +90,21 @@ def cleanining(products_df: pd.DataFrame) -> pd.DataFrame:
     products_df['Number of Floors'] = np.where(products_df['Number of Floors']=='Unknown',
                                                 '1 Floor', 
                                                 products_df['Number of Floors'])
+
+   
+    df_without_land = products_df[products_df['Subcategory'] != 'Lands for Sale']
+    df_without_land.reset_index(drop = True, inplace = True)
+
+    land_df = products_df[products_df['Subcategory'] == 'Lands for Sale']
+    land_df.reset_index(drop = True, inplace = True)
+
+
+    df_without_land = df_without_land[(df_without_land['price'] >= 10000) & (df_without_land['price'] <= 1.750000e+05)]
+
+    land_df = land_df[(land_df['price']>=5000) & (land_df['price']<=1000000)]
+
+    products_df = pd.concat([df_without_land, land_df])
+    
 
     # Renaming Columns
     products_df.rename(str.lower, axis='columns', inplace=True)
@@ -126,25 +138,51 @@ class DatabaseConnection:
 
 class Load:
     def __init__(self, df:pd.DataFrame, table:str, id:str):
+        """
+        Initializes the Load class with parameters to manage data loading.
+        
+        Parameters:
+            df (pd.DataFrame): DataFrame containing data to load.
+            table (str): Target table name for loading.
+            id (str): Primary key column name of the table to ensure unique record identification.
+        """
         self.df = df
         self.table = table
         self.id = id
 
-    
     def normalize_dim_table(self):
+        """
+        Normalizes the DataFrame for a dimension table:
+            - Removes duplicate rows.
+            - Resets the index, removing any previous indexing.
+        """
         self.df = self.df.drop_duplicates()
         self.df = self.df.reset_index()
         self.df = self.df.drop(columns=self.df.columns[0], axis=1)
-
-    
+ 
     def normalize_fact_table(self, list_of_tables, tables_columns, final_schema, engine):
+        """
+    Normalizes the DataFrame for a fact table:
+        - Deduplicates records in the fact table DataFrame.
+        - Merges the fact table with related dimension tables based on foreign keys.
+        - Filters out records that already exist in the database (avoiding primary key duplication).
+
+    Parameters:
+        list_of_tables (list of str): Names of dimension tables in the data warehouse.
+        tables_columns (list of str): Columns in each dimension table to merge with, corresponding to `list_of_tables`.
+        final_schema (list of str): List of columns representing the final schema for the fact table.
+        engine (SQLAlchemy Engine): Database engine used for executing SQL queries.
+        """
         self.df = self.df.drop_duplicates()
+        # Merge each dimension table with the fact table using the specified columns
         for i in range(len(list_of_tables)):
             table_to_merge = pd.read_sql(f'SELECT * FROM {list_of_tables[i]}', con=engine)
             self.df = self.df.merge(table_to_merge,
                          on=tables_columns[i],
                          how='left')
+        # Reorder columns according to the final schema and ensure primary keys are unique
         self.df = self.df[final_schema]
+        # This probably has a problem review later because I don't think it include the dim_primary table lol
         if self.df.columns[0]=='id':
             print(len(self.df['id']))
             fact_listing_id = pd.read_sql('SELECT id FROM fact_listing;', con=engine)
@@ -152,14 +190,24 @@ class Load:
                 if j in list(fact_listing_id['id']):
                     self.df = self.df[self.df['id'] != j]
         self.df.reset_index(inplace=True, drop=True)
-
-
-    
+   
     def load_table(self, cursor, engine):
+        """
+    Loads data from the DataFrame into the target table, handling duplicates and primary key constraints.
+    
+    Parameters:
+        cursor (DB Cursor): Database cursor for SQL query execution.
+        engine (SQLAlchemy Engine): Database connection engine.
+    
+    Raises:
+        IntegrityError: Raised if duplicate primary keys exist in the table.
+        """
         try:
+            # Check existing records in the target table
             cursor.execute(f'SELECT * FROM {self.table};')
             result = cursor.fetchall()
             result = [i[1:] for i in result]
+            # Add only new records not present in the table
             x = []
             for i in range(len(self.df)):
                 tuple_to_add = tuple(self.df.loc[i])
@@ -173,29 +221,32 @@ class Load:
             else:
                 print('No New Data For This Dimension')
         except exc.IntegrityError:
+            # Reset sequence if necessary
             print('Duplicate Index')
             cursor.execute(f'SELECT MAX({self.id}) FROM {self.table};')
             last_id = cursor.fetchone()
             cursor.execute(f"SELECT nextval(pg_get_serial_sequence('{self.table}', '{self.id}'));")
             next_id = cursor.fetchone()
             # Sometimes the next id will be None idk why so i added this
+            # Ensure the sequence is in sync with the table records
             if next_id[0] - last_id[0] < 3:
                 cursor.execute(f'''
                 SELECT 
                     setval(pg_get_serial_sequence('{self.table}', '{self.id}'), 
                     (SELECT MAX({self.id}) FROM {self.table}) + 1);''')
+            # Insert new records after sequence reset
             self.df.to_sql(name=self.table, con=engine, index=False, if_exists='append') # or load_table() again idk
-    
+            
 def main():
     # Extract
-    products = r'.\data\incremental\products.csv'
+    products = r'D:\gproject\data\incremental\products.csv'
     products_data = extract_data(products)
     
     # Transform
     cleaned_data = cleanining(products_data)
     
     # Loading & Normalizing Tables
-    c = DatabaseConnection(user='postgres', password='anon', host='localhost', port='5432', database='houses')
+    c = DatabaseConnection(user='postgres', password='mdkn', host='localhost', port='5432', database='houses')
     cursor, conn = c.connect_to_database()
     engine = c.make_sql_engine()
     
@@ -206,16 +257,17 @@ def main():
     l.normalize_dim_table()
     l.load_table(cursor,engine)
 
-    dim_amenities = cleaned_data[['main_amenities', 'additional_amenities']]
-    l = Load(df=dim_amenities, table='dim_amenities', id='amenities_id')
-    l.normalize_dim_table()
-    l.load_table(cursor,engine)
+    # dim_amenities = cleaned_data[['main_amenities', 'additional_amenities']]
+    # l = Load(df=dim_amenities, table='dim_amenities', id='amenities_id')
+    # l.normalize_dim_table()
+    # l.load_table(cursor,engine)
 
     dim_location = cleaned_data[['google_maps_locatoin_link', 'long', 'lat', 'city', 'neighborhood']]
     l = Load(df=dim_location, table='dim_location', id='location_id')
     l.normalize_dim_table()
     l.load_table(cursor,engine)
 
+    cleaned_data['timestamp'] = pd.to_datetime(cleaned_data['timestamp'])
     dim_date = pd.DataFrame(cleaned_data['timestamp'])
     dim_date['year'] = dim_date['timestamp'].dt.year
     dim_date['month'] = dim_date['timestamp'].dt.month
@@ -241,14 +293,15 @@ def main():
     l.normalize_fact_table(list_of_tables=list_of_tables, tables_columns=tables_columns, final_schema=final_schema, engine=engine)
     l.load_table(cursor, engine)
     
+    # This one line is to add the columns for the fact table and many more
     dim_property = l.df
     
     fact_listing = cleaned_data
-    list_of_tables = ['dim_property', 'dim_location', 'dim_amenities', 'dim_date']
+    list_of_tables = ['dim_property', 'dim_location', 'dim_date']
     dim_property = dim_property.drop('details_id', axis=1)
 
-    tables_columns = [list(dim_property.columns), list(dim_location.columns), list(dim_amenities.columns), ['timestamp']]
-    final_schema = ['id', 'property_id', 'location_id', 'amenities_id', 'date_id', 'price', 'predicted']
+    tables_columns = [list(dim_property.columns), list(dim_location.columns), ['timestamp']]
+    final_schema = ['id', 'property_id', 'location_id', 'date_id', 'price']
 
     l = Load(df=fact_listing, id='id', table='fact_listing')
     l.normalize_fact_table(list_of_tables=list_of_tables, tables_columns=tables_columns, final_schema=final_schema, engine=engine)
@@ -257,5 +310,6 @@ def main():
     # Closing The Database Connection
     cursor.close()
     conn.close()
+    
 if __name__ == '__main__':
     main()
