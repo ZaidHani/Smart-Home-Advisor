@@ -1,10 +1,7 @@
 import psycopg2
 
 # Setting Up the Database:
-try:
-    conn = psycopg2.connect("user='postgres' host='localhost' password='anon' port='5432'")
-except:
-    print("Unable to connect to the database")
+conn = psycopg2.connect("user='postgres' host='localhost' password='mdkn' port='5432'")
 cursor = conn.cursor()
 conn.autocommit = True
 
@@ -15,16 +12,12 @@ cursor.close()
 conn.close()
 
 # Creating the Tables
-try:
-    conn = psycopg2.connect("dbname='houses' user='postgres' host='localhost' password='anon' port='5432'")
-except:
-    print("Unable to connect to the database")
+conn = psycopg2.connect("dbname='houses' user='postgres' host='localhost' password='mdkn' port='5432'")
 cursor = conn.cursor()
 
 cursor.execute('''
     DROP TABLE IF EXISTS dim_property_details;
     DROP TABLE IF EXISTS dim_property;
-    DROP TABLE IF EXISTS dim_amenities;
     DROP TABLE IF EXISTS dim_date;
     DROP TABLE IF EXISTS dim_location;
     DROP TABLE IF EXISTS fact_listing;
@@ -60,12 +53,6 @@ cursor.execute('''
                 REFERENCES dim_property_details(details_id)); --end-sql
         
         --begin-sql 
-    CREATE TABLE dim_amenities(
-        amenities_id SERIAL PRIMARY KEY,
-        main_amenities TEXT,
-        additional_amenities TEXT); --end-sql
-        
-        --begin-sql 
     CREATE TABLE dim_location(
         location_id SERIAL PRIMARY KEY,
         google_maps_locatoin_link VARCHAR(255),
@@ -90,16 +77,11 @@ cursor.execute('''
         id INT PRIMARY KEY,
         property_id INT,
         location_id INT,
-        amenities_id INT,
         date_id INT,
         price FLOAT,        
-        predicted BOOLEAN,
         CONSTRAINT fk_property
             FOREIGN KEY(property_id)
                 REFERENCES dim_property(property_id),
-        CONSTRAINT fk_amenities
-            FOREIGN KEY(amenities_id)
-                REFERENCES dim_amenities(amenities_id),
         CONSTRAINT fk_location
             FOREIGN KEY(location_id)
                 REFERENCES dim_location(location_id),

@@ -38,7 +38,7 @@ def scrape_links(URL:str, pages:int) -> str:
         r = requests.get(url) 
         soup = BeautifulSoup(r.content)
         table = soup.find('section', attrs = {'id':'serpMainContent'})
-        for row in table.findAll('a', {'class':re.compile('sc-c5dfb32c-0 iFqGap postItem flex flexWrap mb-32 relative radius-8 grayHoverBg whiteBg boxShadow2 blackColor p-16')}): 
+        for row in table.findAll('a', {'class':re.compile('sc-e7fc5d43-0 gWwdCb postItem flex flexWrap mb-32 relative radius-8 grayHoverBg whiteBg boxShadow2 blackColor p-16')}): 
             data = {}
             data['id'] = row['href'][11:20]
             data['link'] = 'https://opensooq.com'+row['href']
@@ -48,7 +48,7 @@ def scrape_links(URL:str, pages:int) -> str:
             time.sleep(60)
             print(f'Pages Scrpaed: {i}')
         url = URL
-    pd.DataFrame(df).to_csv('data/initial/links.csv',index_label=False)
+    pd.DataFrame(df).to_csv('D:/gproject/data/initial/links.csv',index_label=False)
     return "Scraping Products Links is Done!"
 
 def safe_extract(find_function, default=None):
@@ -110,7 +110,6 @@ def scrape_prodcuts_data(links:pd.DataFrame) -> str:
         data['images'] = safe_extract(lambda: [img['src'] for img in soup.find('div', {'class': 'image-gallery-slides'}).find_all('img')])
         data['description'] = safe_extract(lambda: soup.find('section', {'id': 'postViewDescription'}).div.text)
         data['owner'] = safe_extract(lambda: soup.find('section', {'id': 'PostViewOwnerCard'}).a.h3.text)
-        data['reviews'] = safe_extract(lambda: soup.find('section', {'id': 'PostViewOwnerCard'}).a.span.text)
         data['google_maps_locatoin_link'] = safe_extract(lambda: soup.find('a', attrs={'class': re.compile('sc-750f6c2-0 dqtnfq map_google relative block mt-16')})['href'])
         coordinates = safe_extract(lambda: re.findall(r'-?\d+\.\d+', data['google_maps_locatoin_link']), [])
         data['long'] = coordinates[0] if coordinates else None
@@ -130,10 +129,10 @@ def scrape_prodcuts_data(links:pd.DataFrame) -> str:
         df.append(data)
         if i%1000==0:
             print(f'Products Scraped: {i}')
-            pd.DataFrame(df).to_csv(f'data/initial/products/{(i//1000)}.csv',index_label=False)
+            pd.DataFrame(df).to_csv(f'D:/gproject/data/initial/products{(i//1000)}.csv',index_label=False)
             df = []
         elif i==len(links):
-            pd.DataFrame(df).to_csv(f'data/initial/products/{(i//1000)}.csv',index_label=False)
+            pd.DataFrame(df).to_csv(f'D:/gproject/data/initial/products{(i//1000)}.csv',index_label=False)
         i+=1
     return "Scraping Products is Done!"
 
@@ -173,14 +172,14 @@ def main():
     # ------Scraping Listings Links------
     # this has already been done so no need to run this function again.
     URL = 'https://jo.opensooq.com/en/real-estate-for-sale/all?search=true&sort_code=recent'
-    pages = 1122 # this number might change, go to the link above and see how many pages are there
+    pages = 333 # this number might change, go to the link above and see how many pages are there
     scrape_links(URL, pages)
     
     # ------Scraping Products Data------
     # redo the scraping, for 2 reasons:
         # 1- most of the data will be gone by the time you read this
         # 2- the data scraped is not complete, we are missing about 2K rows
-    links = pd.read_csv('C:/Users/MANAL/GP2/data/initial/links.csv')
+    links = pd.read_csv('D:/gproject/data/initial/links.csv')
     scrape_prodcuts_data(links)
 
     # ------Scraping Sellers Data------
