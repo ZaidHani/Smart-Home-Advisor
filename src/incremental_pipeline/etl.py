@@ -36,7 +36,7 @@ def cleanining(products_df: pd.DataFrame) -> pd.DataFrame:
         A cleaned products DataFrame ready to be normalized.
     """
     products_df.drop_duplicates(subset = ['id'], inplace = True)
-    products_df.drop(['Real Estate Type', 'Country', 'Reference ID', 'Category', 'Property Status', 'Lister Type', 'Main Amenities', 'Additional Amenities'], axis=1, inplace=True)
+    products_df.drop(['Real Estate Type', 'Country', 'Reference ID', 'Category', 'Property Status', 'Lister Type', 'Main Amenities', 'Additional Amenities'], axis=1, inplace=True, errors='ignore')
     products_df.dropna(subset=['id', 'owner'], inplace=True)
     products_df.drop_duplicates(inplace=True)
 
