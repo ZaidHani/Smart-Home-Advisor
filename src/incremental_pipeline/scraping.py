@@ -36,16 +36,16 @@ def scrape_links(URL:str, pages:int) -> str:
     for i in range(1, pages+1):
         url = f'{URL}&page={i}'
         r = requests.get(url) 
-        soup = BeautifulSoup(r.content)
+        soup = BeautifulSoup(r.content, features='html.parser')
         table = soup.find('div', attrs = {'id':'serpMainContent'})
-        for row in table.findAll('a', {'class':re.compile('sc-c5dfb32c-0 iFqGap postItem flex flexWrap mb-32 relative radius-8 grayHoverBg whiteBg boxShadow2 blackColor p-16')}):
+        for row in table.findAll('a', {'class':re.compile('sc-e7fc5d43-0 gWwdCb postItem flex flexWrap mb-32 relative radius-8 grayHoverBg whiteBg boxShadow2 blackColor p-16')}):
             data = {}
             data['id'] = row['href'][11:20]
             data['link'] = 'https://opensooq.com'+row['href']
             data['price'] = row.find('div',{'class':'priceColor bold alignSelfCenter font-18 ms-auto'}).text
             df.append(data)
-            print(f'Pages Scrpaed: {i}')
         url = URL
+        print(f'Pages Scrpaed: {i}')
     pd.DataFrame(df).to_csv('data/incremental/links.csv',index_label=False,mode='w')
     return "Scraping Products Links is Done!"
 
@@ -109,7 +109,6 @@ def scrape_prodcuts_data(links:pd.DataFrame) -> str:
         data['images'] = safe_extract(lambda: [img['src'] for img in soup.find('div', {'class': 'image-gallery-slides'}).find_all('img')])
         data['description'] = safe_extract(lambda: soup.find('section', {'id': 'postViewDescription'}).div.text)
         data['owner'] = safe_extract(lambda: soup.find('section', {'id': 'PostViewOwnerCard'}).a.h3.text)
-        data['reviews'] = safe_extract(lambda: soup.find('section', {'id': 'PostViewOwnerCard'}).a.span.text)
         data['google_maps_locatoin_link'] = safe_extract(lambda: soup.find('a', attrs={'class': re.compile('sc-750f6c2-0 dqtnfq map_google relative block mt-16')})['href'])
         coordinates = safe_extract(lambda: re.findall(r'-?\d+\.\d+', data['google_maps_locatoin_link']), [])
         data['long'] = coordinates[0] if coordinates else None
@@ -131,6 +130,8 @@ def scrape_prodcuts_data(links:pd.DataFrame) -> str:
         if i==len(links):
             pd.DataFrame(df).to_csv(f'data/incremental/products.csv',index_label=False, mode='w')
         i+=1
+        if i%100==0:
+            print(f'Scraped {i} products')
     return "Scraping Products is Done!"
 
 def main():
