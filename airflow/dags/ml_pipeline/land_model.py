@@ -30,20 +30,18 @@ def extract_data(db_url: str) -> pd.DataFrame:
         # Open a connection to the database and execute the SQL query
         with engine.connect() as connection:
             query = """                                                                
-                SELECT long, lat, city, neighborhood, area, subcategory, facade,
-                       bedrooms, bathrooms, furnished, floor,
-                       building_age, price
+                SELECT long, lat, city, neighborhood, area, zoned_for, price
                 FROM fact_listing FL
                 LEFT JOIN dim_location DL ON DL.location_id = FL.location_id
                 LEFT JOIN dim_property DP ON DP.property_id = FL.property_id
                 LEFT JOIN dim_property_details DPD ON DPD.details_id = DP.details_id
-                WHERE subcategory != 'Lands for Sale'
+                WHERE subcategory = 'Lands for Sale'
             """
             logging.info('Executing query...')
             
             # Read the query result into a pandas DataFrame
             data = pd.read_sql_query(query, con=connection)
-        
+                    
         logging.info('Data extracted successfully.')
         return data
 
@@ -72,7 +70,7 @@ def build_model(data: pd.DataFrame, target_column: str, save_path: str):
         mlflow.start_run()
 
         # Initialize the PyCaret regression setup with the provided dataset and target column
-        s = setup(data, target=target_column, normalize=True, log_experiment=True, experiment_name='Data without land',
+        s = setup(data, target=target_column, normalize=True, log_experiment=True, experiment_name='Land Data',
                   session_id=123)
 
         # Compare multiple models and select the best one
@@ -132,7 +130,7 @@ def main():
     print(data.head())
     
     # Define the file path for saving the trained model
-    model_save_path = 'saved model/Prop-model'
+    model_save_path = 'saved model/Land-model'
     
     # Build the regression model using the extracted data and save it
     model = build_model(data, target_column='price', save_path=model_save_path)
