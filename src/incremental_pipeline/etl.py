@@ -35,7 +35,6 @@ def cleanining(products_df: pd.DataFrame) -> pd.DataFrame:
     pd.DataFrame
         A cleaned products DataFrame ready to be normalized.
     """
-    products_df.drop_duplicates(subset = ['id'], inplace = True)
     products_df.drop(['Real Estate Type', 'Country', 'Reference ID', 'Category', 'Property Status', 'Lister Type', 'Main Amenities', 'Additional Amenities'], axis=1, inplace=True, errors='ignore')
     products_df.dropna(subset=['id', 'owner'], inplace=True)
     products_df.drop_duplicates(inplace=True)
@@ -91,7 +90,6 @@ def cleanining(products_df: pd.DataFrame) -> pd.DataFrame:
                                                 '1 Floor', 
                                                 products_df['Number of Floors'])
 
-   
     df_without_land = products_df[products_df['Subcategory'] != 'Lands for Sale']
     df_without_land.reset_index(drop = True, inplace = True)
 
@@ -104,7 +102,6 @@ def cleanining(products_df: pd.DataFrame) -> pd.DataFrame:
     land_df = land_df[(land_df['price']>=5000) & (land_df['price']<=1000000)]
 
     products_df = pd.concat([df_without_land, land_df])
-    
 
     # Renaming Columns
     products_df.rename(str.lower, axis='columns', inplace=True)
@@ -229,6 +226,13 @@ class Load:
             next_id = cursor.fetchone()
             # Sometimes the next id will be None idk why so i added this
             # Ensure the sequence is in sync with the table records
+            if next_id is None:
+                    cursor.execute(f'''
+                    SELECT 
+                        setval(pg_get_serial_sequence('{self.table}', '{self.id}'), 
+                                    (SELECT MAX({self.id}) FROM {self.table}) + 1);
+                                    ''')
+
             if next_id[0] - last_id[0] < 3:
                 cursor.execute(f'''
                 SELECT 
@@ -236,17 +240,17 @@ class Load:
                     (SELECT MAX({self.id}) FROM {self.table}) + 1);''')
             # Insert new records after sequence reset
             self.df.to_sql(name=self.table, con=engine, index=False, if_exists='append') # or load_table() again idk
-            
+          
 def main():
     # Extract
-    products = r'D:\gproject\data\incremental\products.csv'
+    products = 'products.csv'
     products_data = extract_data(products)
     
     # Transform
     cleaned_data = cleanining(products_data)
     
     # Loading & Normalizing Tables
-    c = DatabaseConnection(user='postgres', password='mdkn', host='localhost', port='5432', database='houses')
+    c = DatabaseConnection(user='postgres', password='mdkn', host='host.docker.internal', port='5432', database='houses')
     cursor, conn = c.connect_to_database()
     engine = c.make_sql_engine()
     
