@@ -34,8 +34,8 @@ def log_etl_success():
 # Define the DAG
 with DAG(
     dag_id='daily_data_pipeline_v03',
-    start_date = datetime.datetime(2024, 11, 7),  # Adjust to your desired start date
-    schedule_interval='@daily',  # Set to run daily at 12:01 AM
+    start_date=datetime.datetime(2024, 11, 7),  # Adjust to your desired start date
+    schedule_interval='1 0 * * *',  # Set to run daily at 12:01 AM
     default_args=default_args,
     catchup=False  # Optional: prevents the DAG from running for missed intervals
 ) as dag:
