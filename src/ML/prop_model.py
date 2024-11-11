@@ -9,12 +9,12 @@ import mlflow
 import mlflow.sklearn  # For tracking the final model
 
 # Set MLflow tracking URI to save runs to a specific path
-mlflow.set_tracking_uri("file:///D:/gproject/airflow/models/mlflow_runs")
+mlflow.set_tracking_uri("file:///D:/gproject/airflow/models/mlflow_runs/mlruns")
 
 # Set up logging configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def extract_data(db_url: str) -> pd.DataFrame:
+def extracting_prop_data(db_url: str) -> pd.DataFrame:
     """
     Extracts data from a PostgreSQL database using the provided database URL.
     """
@@ -42,7 +42,7 @@ def extract_data(db_url: str) -> pd.DataFrame:
         logging.error(f"Error extracting data: {e}")
         raise
 
-def build_model(data: pd.DataFrame, target_column: str, save_path: str, log_path: str):
+def building_prop_model(data: pd.DataFrame, target_column: str, save_path: str, log_path: str):
     """
     Sets up the PyCaret environment, trains a regression model, logs metrics, and saves the model.
     """
@@ -101,7 +101,7 @@ def main():
     db_url = 'postgresql://postgres:mdkn@localhost:5432/houses'
     
     # Extract data from the database
-    data = extract_data(db_url)
+    data = extracting_prop_data(db_url)
     print("Data preview:")
     print(data.head())
     
@@ -110,7 +110,7 @@ def main():
     log_save_path = 'D:/gproject/airflow/models/logs/model_training.log'
     
     # Train the model and save it
-    model = build_model(data, target_column='price', save_path=model_save_path, log_path=log_save_path)
+    model = building_prop_model(data, target_column='price', save_path=model_save_path, log_path=log_save_path)
 
     # Verify model loading
     try:
