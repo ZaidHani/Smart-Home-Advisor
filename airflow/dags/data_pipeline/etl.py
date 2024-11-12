@@ -181,7 +181,8 @@ class Load:
         self.df = self.df[final_schema]
         # This probably has a problem review later because I don't think it include the dim_primary table lol
         if self.df.columns[0]=='id':
-            print(len(self.df['id']))
+            self.df.drop_duplicates(subset='id', inplace=True)
+            print('number of ids in the dataframe: ',len(self.df['id']))
             fact_listing_id = pd.read_sql('SELECT id FROM fact_listing;', con=engine)
             for j in self.df['id']:
                 if j in list(fact_listing_id['id']):
@@ -226,14 +227,23 @@ class Load:
             next_id = cursor.fetchone()
             # Sometimes the next id will be None idk why so i added this
             # Ensure the sequence is in sync with the table records
-            if next_id[0] - last_id[0] < 3:
+            print(f'next_id: {next_id}')
+            print(f'last_id: {last_id}')
+            if next_id[0] is None:
+                    cursor.execute(f'''
+                    SELECT 
+                        setval(pg_get_serial_sequence('{self.table}', '{self.id}'), 
+                                    (SELECT MAX({self.id}) FROM {self.table}) + 1);
+                                    ''')
+
+            elif next_id[0] - last_id[0] < 3:
                 cursor.execute(f'''
                 SELECT 
                     setval(pg_get_serial_sequence('{self.table}', '{self.id}'), 
                     (SELECT MAX({self.id}) FROM {self.table}) + 1);''')
             # Insert new records after sequence reset
             self.df.to_sql(name=self.table, con=engine, index=False, if_exists='append') # or load_table() again idk
-            
+          
 def main():
     # Extract
     products = 'products.csv'
@@ -241,6 +251,7 @@ def main():
     
     # Transform
     cleaned_data = cleanining(products_data)
+    print(len(cleaned_data))
     
     # Loading & Normalizing Tables
     c = DatabaseConnection(user='postgres', password='anon', host='host.docker.internal', port='5432', database='houses')
