@@ -7,7 +7,7 @@ import pandas as pd
 import time
 import datetime
 
-def scrape_links(URL:str, pages:int) -> str:
+def scrape_links(URL:str, pages:int, html_class:str) -> str:
     """Scrape product URLs from OpenSooq
     
     This function scrapes URLs for products listed on the specified number of pages from an OpenSooq category landing page.
@@ -36,17 +36,17 @@ def scrape_links(URL:str, pages:int) -> str:
     for i in range(1, pages+1):
         url = f'{URL}&page={i}'
         r = requests.get(url) 
-        soup = BeautifulSoup(r.content, features='html.parser')
+        soup = BeautifulSoup(r.content)
         table = soup.find('div', attrs = {'id':'serpMainContent'})
-        for row in table.findAll('a', {'class':re.compile('sc-e7fc5d43-0 gWwdCb postItem flex flexWrap mb-32 relative radius-8 grayHoverBg whiteBg boxShadow2 blackColor p-16')}):
+        for row in table.findAll('a', {'class':re.compile(html_class)}):
             data = {}
             data['id'] = row['href'][11:20]
             data['link'] = 'https://opensooq.com'+row['href']
             data['price'] = row.find('div',{'class':'priceColor bold alignSelfCenter font-18 ms-auto'}).text
             df.append(data)
+            print(f'Pages Scrpaed: {i}')
         url = URL
-        print(f'Pages Scrpaed: {i}')
-    pd.DataFrame(df).to_csv('data/incremental/links.csv',index_label=False,mode='w')
+    pd.DataFrame(df).to_csv('links.csv',index_label=False,mode='w')
     return "Scraping Products Links is Done!"
 
 def safe_extract(find_function, default=None):
@@ -109,10 +109,11 @@ def scrape_prodcuts_data(links:pd.DataFrame) -> str:
         data['images'] = safe_extract(lambda: [img['src'] for img in soup.find('div', {'class': 'image-gallery-slides'}).find_all('img')])
         data['description'] = safe_extract(lambda: soup.find('section', {'id': 'postViewDescription'}).div.text)
         data['owner'] = safe_extract(lambda: soup.find('section', {'id': 'PostViewOwnerCard'}).a.h3.text)
+        data['reviews'] = safe_extract(lambda: soup.find('section', {'id': 'PostViewOwnerCard'}).a.span.text)
         data['google_maps_locatoin_link'] = safe_extract(lambda: soup.find('a', attrs={'class': re.compile('sc-750f6c2-0 dqtnfq map_google relative block mt-16')})['href'])
         coordinates = safe_extract(lambda: re.findall(r'-?\d+\.\d+', data['google_maps_locatoin_link']), [])
-        data['long'] = coordinates[0] if coordinates else None
-        data['lat'] = coordinates[1] if coordinates else None
+        data['long'] = coordinates[1] if coordinates else None
+        data['lat'] = coordinates[0] if coordinates else None
         data['owner_link'] = safe_extract(lambda: 'https://opensooq.com' + soup.find('section', {'id': 'PostViewOwnerCard'}).a.get("href"))
         data['price'] = links.loc[row,'price']
         data['timestamp'] = datetime.datetime.now() # replace this one with the actual date that they put in open sooq
@@ -128,19 +129,18 @@ def scrape_prodcuts_data(links:pd.DataFrame) -> str:
         
         df.append(data)
         if i==len(links):
-            pd.DataFrame(df).to_csv(f'data/incremental/products.csv',index_label=False, mode='w')
+            pd.DataFrame(df).to_csv(f'products.csv',index_label=False, mode='w')
         i+=1
-        if i%100==0:
-            print(f'Scraped {i} products')
     return "Scraping Products is Done!"
 
 def main():
+    frequently_changing_class = 'sc-e7fc5d43-0 gWwdCb postListItemData flex flexWrap mb-32 relative radius-8 grayHoverBg whiteBg boxShadow2 blackColor p-16'
     # ------Scraping Listings Links------
     URL = 'https://jo.opensooq.com/en/real-estate-for-sale/all?search=true&sort_code=recent'
     pages = 35
-    scrape_links(URL, pages)
+    scrape_links(URL, pages, frequently_changing_class)
     # ------Scraping Products Data------
-    links = pd.read_csv('data/incremental/links.csv')
+    links = pd.read_csv('links.csv')
     scrape_prodcuts_data(links)
     
 if __name__=='__main__':
