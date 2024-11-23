@@ -77,7 +77,6 @@ cursor.execute('''
         id INT PRIMARY KEY,
         property_id INT,
         location_id INT,
-        amenities_id INT,
         date_id INT,
         price FLOAT,        
         CONSTRAINT fk_property
