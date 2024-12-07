@@ -1,0 +1,201 @@
+/* General Styles */
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #121212;
+    color: #f9f9f9;
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
+}
+
+/* Navigation Bar */
+nav {
+    background-color: #1f1f1f;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #daa520;
+}
+
+nav a {
+    color: #daa520;
+    text-decoration: none;
+    margin: 0 15px;
+    font-weight: bold;
+    font-size: 18px;
+}
+
+nav a:hover {
+    color: #f9f9f9;
+    text-shadow: 0 0 10px #daa520;
+}
+
+/* Container */
+.container {
+    max-width: 1200px;
+    margin: 30px auto;
+    padding: 20px;
+    background: #1e1e1e;
+    border-radius: 10px;
+    box-shadow: 0 0 15px rgba(218, 165, 32, 0.5);
+}
+
+/* Headings */
+h1, h2 {
+    text-align: center;
+    color: #daa520;
+    margin-bottom: 20px;
+}
+
+h1 {
+    font-size: 2.5em;
+}
+
+h2 {
+    font-size: 1.8em;
+}
+
+/* Buttons */
+.btn {
+    display: inline-block;
+    padding: 10px 20px;
+    font-size: 18px;
+    font-weight: bold;
+    color: #121212;
+    background-color: #daa520;
+    border: none;
+    border-radius: 5px;
+    text-decoration: none;
+    text-align: center;
+    margin: 15px auto;
+    transition: 0.3s;
+}
+
+.btn:hover {
+    background-color: #f9f9f9;
+    color: #1f1f1f;
+    box-shadow: 0 0 15px rgba(218, 165, 32, 0.7);
+}
+
+/* Home Page Grid */
+.home-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin: 20px 0;
+}
+
+.home-card {
+    background-color: #1e1e1e;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 15px rgba(218, 165, 32, 0.5);
+    text-align: center;
+}
+
+.home-card h2 {
+    font-size: 1.5em;
+    margin-bottom: 10px;
+    color: #f9f9f9;
+}
+
+.home-card p {
+    font-size: 1em;
+    color: #c5c5c5;
+}
+
+/* Form Styles */
+form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: #1e1e1e;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 15px rgba(218, 165, 32, 0.5);
+}
+
+form input, form button {
+    width: 80%;
+    margin: 10px 0;
+    padding: 10px;
+    font-size: 16px;
+}
+
+form input {
+    border: 1px solid #daa520;
+    border-radius: 5px;
+    background-color: #121212;
+    color: #f9f9f9;
+}
+
+form input::placeholder {
+    color: #c5c5c5;
+}
+
+form button {
+    background-color: #daa520;
+    color: #121212;
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+form button:hover {
+    background-color: #f9f9f9;
+    color: #1f1f1f;
+    box-shadow: 0 0 10px rgba(218, 165, 32, 0.7);
+}
+
+/* Chatbox */
+.chatbox {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 20px;
+}
+
+.chatbox input {
+    width: 70%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #daa520;
+    border-radius: 5px;
+    background-color: #121212;
+    color: #f9f9f9;
+}
+
+.chatbox button {
+    width: 30%;
+    padding: 10px;
+    background-color: #daa520;
+    border: none;
+    border-radius: 5px;
+    color: #121212;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.chatbox button:hover {
+    background-color: #f9f9f9;
+    color: #1f1f1f;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    nav a {
+        font-size: 14px;
+    }
+
+    .btn {
+        font-size: 16px;
+    }
+
+    h1, h2 {
+        font-size: 1.8em;
+    }
+}

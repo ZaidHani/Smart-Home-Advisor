@@ -1,0 +1,120 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>House Price Predictor</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        .prediction-form {
+            max-width: 500px;
+            margin: 0 auto;
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .prediction-form input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        .prediction-result {
+            text-align: center;
+            font-size: 1.5em;
+            color: #2c3e50;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="/">Home</a>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/ml-model">ML Model</a>
+        <a href="/chatbot">Chatbot</a>
+    </nav>
+    
+    <div class="container">
+        <h1>House Price Predictor</h1>
+        
+        <form class="prediction-form" method="post" action="/predict">
+            <input type="number" name="long" placeholder="Longitude" required step="0.00001">
+            <input type="number" name="lat" placeholder="Latitude" required step="0.00001">
+            <input type="text" name="city" placeholder="City" required>
+            <input type="text" name="neighborhood" placeholder="Neighborhood" required>
+            <input type="number" name="area" placeholder="Area" required step="0.01">
+            <input type="text" name="zoned_for" placeholder="Zoned For" required>
+            <button type="submit">Predict Price</button>
+        </form>
+        
+        {% if prediction %}
+        <div class="prediction-result">
+            <p>Predicted Price: {{ prediction }}</p>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html> -->
+<!-- models page(two models)-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Price Prediction Models</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <nav>
+        <a href="/">Home</a>
+        <a href="/models">Models</a>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/chatbot">Chat</a>
+    </nav>
+    <div class="container">
+        <h1>Price Prediction Models</h1>
+        <div class="models-container">
+            <div class="model-section">
+                <h2>Land Price Prediction</h2>
+                <form method="POST" action="/predict-land">
+                    <input type="number" step="any" name="long" placeholder="Longitude" required>
+                    <input type="number" step="any" name="lat" placeholder="Latitude" required>
+                    <input type="text" name="city" placeholder="City" required>
+                    <input type="text" name="neighborhood" placeholder="Neighborhood" required>
+                    <input type="number" step="0.1" name="area" placeholder="Area (sq. meters)" required>
+                    <input type="text" name="zoned_for" placeholder="Zoned For" required>
+                    <button type="submit">Predict Land Price</button>
+                </form>
+                {% if land_prediction %}
+                <div class="prediction-result">
+                    <p>{{ land_prediction }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="model-section">
+                <h2>Property Price Prediction</h2>
+                <form method="POST" action="/predict-property">
+                    <input type="number" step="any" name="long" placeholder="Longitude" required>
+                    <input type="number" step="any" name="lat" placeholder="Latitude" required>
+                    <input type="text" name="city" placeholder="City" required>
+                    <input type="text" name="neighborhood" placeholder="Neighborhood" required>
+                    <input type="number" step="0.1" name="area" placeholder="Area (sq. meters)" required>
+                    <input type="text" name="subcategory" placeholder="Subcategory" required>
+                    <input type="text" name="facade" placeholder="Facade" required>
+                    <input type="number" name="bedrooms" placeholder="Bedrooms" required>
+                    <input type="number" name="bathrooms" placeholder="Bathrooms" required>
+                    <input type="text" name="furnished" placeholder="Furnished Status" required>
+                    <input type="number" name="floor" placeholder="Floor" required>
+                    <input type="number" name="building_age" placeholder="Building Age" required>
+                    <button type="submit">Predict Property Price</button>
+                </form>
+                {% if property_prediction %}
+                <div class="prediction-result">
+                    <p>{{ property_prediction }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>
