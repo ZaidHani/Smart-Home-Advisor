@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background: #000000;
+            background-size: cover;
+            background-blend-mode: overlay;
+            color: #dab15a;
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        nav {
+            background: #000;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-around;
+            border-bottom: 2px solid #f2c94c;
+            position: relative;
+            overflow: hidden;
+        }
+
+        nav::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(
+                120deg,
+                transparent,
+                rgba(242, 201, 76, 0.2),
+                transparent
+            );
+            animation: shimmer 3s infinite linear;
+        }
+
+        nav a {
+            color: #f2c94c;
+            text-decoration: none;
+            font-size: 1.5rem;
+            opacity: 0;
+            animation: fadeIn 0.5s ease forwards;
+            position: relative;
+        }
+
+        nav a::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: #f2c94c;
+            transition: width 0.3s ease;
+        }
+
+        nav a:hover::after {
+            width: 100%;
+        }
+
+        nav a:nth-child(1) { animation-delay: 0.2s; }
+        nav a:nth-child(2) { animation-delay: 0.4s; }
+        nav a:nth-child(3) { animation-delay: 0.6s; }
+        nav a:nth-child(4) { animation-delay: 0.8s; }
+
+        .chat-container {
+            max-width: 800px;
+            width: 100%;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            padding: 20px;
+            margin-top: 60px;
+            margin-bottom: 80px;
+            opacity: 0;
+            animation: revealCard 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards 0.5s;
+        }
+
+        .chat-history {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding-bottom: 30px;
+        }
+
+        .user-message, .bot-response {
+            background: rgba(0, 0, 0, 0.7);
+            border-left: 4px solid #f2c94c;
+            margin-bottom: 40px;
+            padding: 15px 20px;
+            border-radius: 0 8px 8px 0;
+            animation: fadeIn 0.3s ease-out;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .user-message:hover, .bot-response:hover {
+            transform: translateX(5px);
+            box-shadow: 0 0 15px rgba(242, 201, 76, 0.2);
+        }
+
+        .user-message strong, .bot-response strong {
+            color: #f2c94c;
+            display: block;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+
+        .bot-response::after {
+            content: '|';
+            animation: blink 0.7s infinite;
+            position: absolute;
+            right: 10px;
+            color: #f2c94c;
+        }
+
+        .empty-state {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            color: #dab15a;
+            text-align: center;
+            padding: 40px 40px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #f2c94c;
+            border-radius: 8px;
+        }
+
+        .chatbot-container {
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-top: 2px solid #f2c94c;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+        }
+
+        form {
+            display: flex;
+            gap: 10px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        textarea {
+            flex-grow: 1;
+            padding: 15px;
+            background: rgba(26, 26, 26, 0.8);
+            border: 2px solid #f2c94c;
+            color: #dab15a;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            resize: none;
+            min-height: 54px;
+            max-height: 150px;
+            overflow-y: hidden;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #ffdd57;
+            box-shadow: 0 0 10px rgba(242, 201, 76, 0.3);
+        }
+
+        button {
+            background: #f2c94c;
+            color: #000;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            height: 54px;
+        }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                120deg,
+                transparent,
+                rgba(255, 255, 255, 0.3),
+                transparent
+            );
+            animation: buttonShimmer 2s infinite linear;
+        }
+
+        button:hover {
+            background: #ffdd57;
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(242, 201, 76, 0.5);
+        }
+
+        @keyframes shimmer {
+            100% { left: 200%; }
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes revealCard {
+            from { opacity: 0; transform: translateY(30px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes buttonShimmer {
+            100% { left: 200%; }
+        }
+
+        @media (max-width: 600px) {
+            form {
+                flex-direction: column;
+            }
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const textarea = document.querySelector('textarea');
+            
+            textarea.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = this.scrollHeight + 'px';
+            });
+
+            const botResponses = document.querySelectorAll('.bot-response');
+            botResponses.forEach(response => {
+                const text = response.textContent;
+                response.textContent = '';
+                let index = 0;
+
+                function typeText() {
+                    if (index < text.length) {
+                        response.textContent += text.charAt(index);
+                        index++;
+                        setTimeout(typeText, 20);
+                    }
+                }
+
+                typeText();
+            });
+        });
+    </script>
+</head>
+<body>
+    <nav>
+        <a href="/">Home</a>
+        <a href="/models">Models</a>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/chatbot">Chat</a>
+    </nav>
+
+    <div class="chat-container">
+        <div class="chat-history">
+            {% if user_message and bot_response %}
+                <div class="user-message">
+                    <strong>You</strong>
+                    {{ user_message }}
+                </div>
+                <div class="bot-response">
+                    {{ bot_response }}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <p>Start a conversation</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="chatbot-container">
+        <form action="/chat" method="POST">
+            <textarea name="message" placeholder="Type your message here" required rows="1"></textarea>
+            <button type="submit">Send</button>
+        </form>
+    </div>
+</body>
+</html>
