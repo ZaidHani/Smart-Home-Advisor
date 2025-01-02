@@ -1,12 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
-<!-- Previous head content remains the same -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Price Prediction Models</title>
     <style>
-        /* Previous styles remain the same */
         * {
             margin: 0;
             padding: 0;
@@ -39,7 +37,11 @@
             margin: 30px auto;
             padding: 20px;
             background: #111;
-            box-shadow: 0 0 10px rgba(242,201,76,0.2);
+        }
+
+        h1, h2 {
+            text-align: center;
+            margin-bottom: 20px;
         }
 
         .model-selector {
@@ -57,12 +59,6 @@
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .model-btn:hover {
-            background-color: #ffc107;
-            transform: scale(1.05);
         }
 
         .model-btn.active {
@@ -71,22 +67,51 @@
             border: 2px solid #f2c94c;
         }
 
-        #land-model, #property-model {
-            display: none;
-            animation: fadeIn 0.5s ease;
-        }
-
-        #land-model.active, #property-model.active {
-            display: block;
-        }
-
         .form-section {
             width: 100%;
-            max-width: 600px; /* Added max-width for better layout */
+            max-width: 600px;
             padding: 20px;
             background: #222;
             border-radius: 5px;
-            margin: 0 auto 20px; /* Centered the form */
+            margin: 0 auto 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            width: 70%;
+            text-align: left;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 70%;
+            padding: 8px;
+            border: 1px solid #f2c94c;
+            background: #000;
+            color: #f2c94c;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            height: 35px;
+        }
+
+        button[type="submit"] {
+            width: 70%;
+            padding: 12px;
+            background-color: #f2c94c;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 20px auto;
+            display: block;
         }
 
         .result-section {
@@ -98,70 +123,22 @@
             text-align: center;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+        #land-model,
+        #property-model {
+            display: none;
         }
 
-        .form-group {
-            margin-bottom: 15px;
-            display: flex;
-            flex-direction: column;
-            align-items: center; /* Center the form elements */
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            color: #f2c94c;
-            width: 70%; /* Make labels match input width */
-            text-align: left;
-        }
-
-        .form-group input, 
-        .form-group select {
-            width: 70%; /* Reduced width of inputs */
-            padding: 8px; /* Reduced padding */
-            border: 1px solid #f2c94c;
-            background: #000;
-            color: #f2c94c;
-            border-radius: 4px;
-            font-size: 0.9rem; /* Slightly smaller font */
-            height: 35px; /* Fixed height for consistency */
-        }
-
-        button[type="submit"] {
-            width: 70%; /* Match input width */
-            padding: 12px;
-            background-color: #f2c94c;
-            color: #000;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            margin: 20px auto; /* Center the button */
+        #land-model.active,
+        #property-model.active {
             display: block;
         }
-
-        button[type="submit"]:hover {
-            background-color: #ffc107;
-        }
-
-
 
         .prediction-container {
             width: 100%;
         }
-
-        h2 {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-    </style>
+    </style> 
 </head>
-<!-- Rest of the HTML remains exactly the same -->
 <body>
-    <!-- Previous HTML content remains exactly the same -->
     <nav>
         <a href="/">Home</a>
         <a href="/models">Models</a>
@@ -170,7 +147,7 @@
     </nav>
 
     <div class="container">
-        <h1 style="text-align: center; margin-bottom: 30px; color: #f2c94c;">Property and Land Price Prediction</h1>
+        <h1>Property and Land Price Prediction</h1>
         
         <div class="model-selector">
             <button class="model-btn" data-model="land">Land Price Model</button>
@@ -321,7 +298,9 @@
                         <label for="furnished">Furnished:</label>
                         <select id="furnished" name="furnished" required>
                             <option value="Unfurnished" selected>Unfurnished</option>
-                            <option value="yes">Yes</option>
+                            <option value="Furnished">Furnished</option>
+                            <option value="Not a Building">Not a Building</option>
+                            <option value="Semi Furnished">Semi Furnished</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -367,40 +346,38 @@
                 {% endif %}
             </section>
         </div>
+    </div>
 
-        
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-    const modelButtons = document.querySelectorAll('.model-btn');
-    const landModel = document.getElementById('land-model');
-    const propertyModel = document.getElementById('property-model');
+            const modelButtons = document.querySelectorAll('.model-btn');
+            const landModel = document.getElementById('land-model');
+            const propertyModel = document.getElementById('property-model');
 
-    // Check if property prediction exists to stay on property model
-    const propertyPredictionResult = document.getElementById('property-prediction-result');
-    if (propertyPredictionResult) {
-        propertyModel.classList.add('active');
-        document.querySelector('.model-btn[data-model="property"]').classList.add('active');
-        landModel.classList.remove('active');
-        document.querySelector('.model-btn[data-model="land"]').classList.remove('active');
-    } else {
-        landModel.classList.add('active');
-        document.querySelector('.model-btn[data-model="land"]').classList.add('active');
-        propertyModel.classList.remove('active');
-        document.querySelector('.model-btn[data-model="property"]').classList.remove('active');
-    }
+            const propertyPredictionResult = document.getElementById('property-prediction-result');
+            if (propertyPredictionResult) {
+                propertyModel.classList.add('active');
+                document.querySelector('.model-btn[data-model="property"]').classList.add('active');
+                landModel.classList.remove('active');
+                document.querySelector('.model-btn[data-model="land"]').classList.remove('active');
+            } else {
+                landModel.classList.add('active');
+                document.querySelector('.model-btn[data-model="land"]').classList.add('active');
+                propertyModel.classList.remove('active');
+                document.querySelector('.model-btn[data-model="property"]').classList.remove('active');
+            }
 
-    modelButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            modelButtons.forEach(btn => btn.classList.remove('active'));
-            [landModel, propertyModel].forEach(section => section.classList.remove('active'));
+            modelButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    modelButtons.forEach(btn => btn.classList.remove('active'));
+                    [landModel, propertyModel].forEach(section => section.classList.remove('active'));
 
-            button.classList.add('active');
-            const modelToShow = button.dataset.model === 'land' ? landModel : propertyModel;
-            modelToShow.classList.add('active');
+                    button.classList.add('active');
+                    const modelToShow = button.dataset.model === 'land' ? landModel : propertyModel;
+                    modelToShow.classList.add('active');
+                });
+            });
         });
-    });
-});
     </script>
-    
 </body>
 </html>

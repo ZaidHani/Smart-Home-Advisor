@@ -6,14 +6,15 @@
     <title>Property Dashboard</title>
     <style>
         body {
-            background-color: #000;
-            color: #f2c94c;
-            margin: 0;
+            background:#000000;
+            background-size: cover;
+            background-blend-mode: overlay;
+            color: #dab15a;
             font-family: Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
+            margin: 0;
+            padding: 0;
             min-height: 100vh;
-            overflow: hidden;
+            overflow-x: hidden;
         }
         
         nav {
@@ -22,13 +23,60 @@
             display: flex;
             justify-content: space-around;
             border-bottom: 2px solid #f2c94c;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        nav::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(
+                120deg,
+                transparent,
+                rgba(242, 201, 76, 0.2),
+                transparent
+            );
+            animation: shimmer 3s infinite linear;
+        }
+
+        @keyframes shimmer {
+            100% {
+                left: 200%;
+            }
         }
         
         nav a {
             color: #f2c94c;
             text-decoration: none;
             font-size: 1.5rem;
+            opacity: 0;
+            animation: fadeIn 0.5s ease forwards;
+            position: relative;
         }
+
+        nav a::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: #f2c94c;
+            transition: width 0.3s ease;
+        }
+
+        nav a:hover::after {
+            width: 100%;
+        }
+
+        nav a:nth-child(1) { animation-delay: 0.2s; }
+        nav a:nth-child(2) { animation-delay: 0.4s; }
+        nav a:nth-child(3) { animation-delay: 0.6s; }
+        nav a:nth-child(4) { animation-delay: 0.8s; }
         
         .dashboard {
             flex-grow: 1;
@@ -37,18 +85,45 @@
             align-items: center;
             padding: 1em;
             opacity: 0;
-            transform: scale(0.9);
-            animation: fadeInScale 0.7s ease-in-out forwards 1.5s;
+            transform: translateY(30px) scale(0.95);
+            animation: revealCard 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards 1s;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #f2c94c;
+            border-radius: 8px;
+            margin: 20px;
+            position: relative;
+            overflow: hidden;
+            pointer-events: none;
         }
-        
+
         .dashboard iframe {
             width: 100%;
             max-width: 1200px;
             height: 80vh;
             border: none;
+            pointer-events: auto;
         }
-        
-        /* Improved Fire Animation */
+
+        .dashboard::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(
+                circle,
+                rgba(242, 201, 76, 0.1) 0%,
+                transparent 70%
+            );
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .dashboard:hover::before {
+            opacity: 1;
+        }
+
         .page-load {
             position: fixed;
             top: 0;
@@ -136,22 +211,54 @@
             }
         }
 
-        @keyframes fadeInScale {
-            0% {
+        @keyframes fadeIn {
+            from {
                 opacity: 0;
-                transform: scale(0.9);
+                transform: translateY(-20px);
             }
-            100% {
+            to {
                 opacity: 1;
-                transform: scale(1);
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes revealCard {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
             }
         }
 
         footer {
             text-align: center;
-            padding: 1em 0;
-            background-color: #000;
-            color: #fff;
+            padding: 20px 0;
+            color: #f2c94c;
+            background: #000;
+            border-top: 2px solid #f2c94c;
+            opacity: 0;
+            animation: fadeIn 0.5s ease forwards 1.6s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        footer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(
+                120deg,
+                transparent,
+                rgba(242, 201, 76, 0.2),
+                transparent
+            );
+            animation: shimmer 3s infinite linear;
         }
     </style>
 </head>
@@ -161,7 +268,7 @@
             <div class="flame"></div>
         </div>
     </div>
-    
+
     <nav>
         <a href="/">Home</a>
         <a href="/models">Models</a>
