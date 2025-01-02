@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Property Advisor Chatbot</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: #000;
+            color: #fff;
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        nav {
+            background: #000;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-around;
+            border-bottom: 2px solid #f2c94c;
+        }
+
+        nav a {
+            color: #f2c94c;
+            text-decoration: none;
+            font-size: 1.5rem;
+        }
+
+        nav a:hover {
+            color: #ffdd57;
+        }
+
+        .chat-container {
+            max-width: 800px;
+            width: 100%;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            padding: 20px;
+            margin-top: 60px;
+            margin-bottom: 80px;
+        }
+
+        .chat-history {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding-bottom: 30px;
+        }
+
+        .user-message, .bot-response {
+            background-color: #1a1a1a;
+            border-left: 4px solid #f2c94c;
+            margin-bottom: 40px; /* Increased spacing between messages */
+            padding: 15px 20px;
+            border-radius: 0 8px 8px 0;
+            animation: fadeIn 0.3s ease-out;
+            position: relative;
+        }
+
+        /* Add a subtle separator between messages */
+        .user-message::before, .bot-response::before {
+            content: '';
+            position: absolute;
+            top: -20px;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            background-color: rgba(242, 201, 76, 0.1);
+        }
+
+        .user-message strong, .bot-response strong {
+            color: #f2c94c;
+            display: block;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+
+        .bot-response {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .bot-response::after {
+            content: '|';
+            animation: blink 0.7s infinite;
+            position: absolute;
+            right: 10px;
+            color: #f2c94c;
+        }
+
+        .empty-state {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            color: #666;
+            text-align: center;
+            padding: 40px 40px;
+        }
+
+        .chatbot-container {
+            background-color: #0a0a0a;
+            padding: 20px;
+            border-top: 1px solid #222;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+        }
+
+        form {
+            display: flex;
+            gap: 10px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        input[type="text"] {
+            flex-grow: 1;
+            padding: 15px;
+            background-color: #1a1a1a;
+            border: 1px solid #333;
+            color: #fff;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #f2c94c;
+        }
+
+        button {
+            background-color: #f2c94c;
+            color: #000;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+
+        button:hover {
+            background-color: #ffdd57;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        @media (max-width: 600px) {
+            form {
+                flex-direction: column;
+            }
+        }
+    </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const botResponses = document.querySelectorAll('.bot-response');
+            botResponses.forEach(response => {
+                const text = response.textContent;
+                response.textContent = '';
+                let index = 0;
+
+                function typeText() {
+                    if (index < text.length) {
+                        response.textContent += text.charAt(index);
+                        index++;
+                        setTimeout(typeText, 20);
+                    }
+                }
+
+                typeText();
+            });
+        });
+    </script>
+</head>
+<body>
+    <nav>
+        <a href="/">Home</a>
+        <a href="/models">Models</a>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/chatbot">Chat</a>
+    </nav>
+
+    <div class="chat-container">
+        <div class="chat-history">
+            {% if user_message and bot_response %}
+                <div class="user-message">
+                    <strong>You</strong>
+                    {{ user_message }}
+                </div>
+                <div class="bot-response">
+                    <strong>Property Advisor</strong>
+                    {{ bot_response }}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <p>Start a conversation with your Property Advisor</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="chatbot-container">
+        <form action="/chat" method="POST">
+            <input type="text" name="message" placeholder="Ask me about properties, land prices, or real estate advice" required>
+            <button type="submit">Send</button>
+        </form>
+    </div>
+</body>
+</html>
