@@ -24,8 +24,10 @@ Smart Home Advisor is a comprehensive A-Z data Science project that provides ins
   + Dashboard Page: Visualize insights and trends
   + Chatbot Page: Interact with a RAG chatbot
 
- ### Setup
- 
+ ### Setup 
+ 1. Installing Airflow:
+  
+   
 
 ### Tech Stack
 + Web Scraping: BeautifulSoup
@@ -38,8 +40,22 @@ Smart Home Advisor is a comprehensive A-Z data Science project that provides ins
 ### Data Pipeline Workflow
 We have 2 data pipelines for this project, the first one is the initial data pipeline which will only run once and will pull all the properties data from OpenSooq, clean the data, and then store them in the data warehouse, and the second one is the incremental data pipeline which will run daily and pull only 1000 listing every day, clean them then store them, These pipelines are mostly similar, but there is a normalization method in the incremental pipeline to avoid primary key errors.
 
+#### The Initial Data Pipeline
+![Initial Pipeline](https://github.com/ZaidHani/Smart-Home-Advisor/blob/main/images/ini.png)
+#### The Incremental Data Pipeline
+![Incremental Pipeline](https://github.com/ZaidHani/Smart-Home-Advisor/blob/main/images/inc.png)
+#### The Data Warehouse Schema
+![Data Warehouse Schema](https://github.com/ZaidHani/Smart-Home-Advisor/blob/main/images/data%20warehouse%20postgre.jpg)
+
 ### Machine Learning Model
 
 ### FastAPI
 
+### Conclusion
+Smart Home Advisor is a data science project that handles the properties market and provides a web app to help users buy properties and discover the housing market trends.
+
 ### Contact
+This project was made by:
+[Zaid Allawanseh](https://www.linkedin.com/in/zaid-allawanseh/)
+[Mohammad Aljermy](https://www.linkedin.com/in/mohammad-aljermy/)
+[Mahmoud Ayman](https://www.linkedin.com/in/mahmoud-ayman-311389263/)
