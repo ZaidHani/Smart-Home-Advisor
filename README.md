@@ -25,8 +25,12 @@ Smart Home Advisor is a comprehensive A-Z data Science project that provides ins
   + Chatbot Page: Interact with a RAG chatbot
 
  ### Setup 
- 1. Installing Airflow:
-  
+ + Prerequisites:
+   + WSL2
+   + Docker
++ Airflow:
+  + Download the docker-compose file:
+    ```curl -LFO```
    
 
 ### Tech Stack
@@ -48,8 +52,15 @@ We have 2 data pipelines for this project, the first one is the initial data pip
 ![Data Warehouse Schema](https://github.com/ZaidHani/Smart-Home-Advisor/blob/main/images/data%20warehouse%20postgre.jpg)
 
 ### Machine Learning Model
+PyCaret is an automated machine-learning framework that constructs numerous data pipelines and identifies the model with the highest efficiency.
 
 ### FastAPI
+The web app is composed of 4 pages:
++ Home Page: Overview of the project
++ Models Page: Predict property prices
++ Dashboard Page: Visualize insights and trends
++ Chatbot Page: Interact with a RAG chatbot
+
 
 ### Conclusion
 Smart Home Advisor is a data science project that handles the properties market and provides a web app to help users buy properties and discover the housing market trends.
