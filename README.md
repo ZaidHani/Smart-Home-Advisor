@@ -12,6 +12,8 @@
 ### Overview
 Smart Home Advisor is a comprehensive A-Z data Science project that provides insights into house listings from OpenSooq, descriptive analytics, and a chatbot interface for user interaction through a FastAPI-based web application.
 
+![Home Page](https://github.com/ZaidHani/Smart-Home-Advisor/blob/main/images/home%20page.png)
+
 ### Features
 + Automated data ingestion pipeline with Apache Airflow
 + Incremental updates to ensure data freshness
