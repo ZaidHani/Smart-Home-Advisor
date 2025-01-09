@@ -69,4 +69,4 @@ Smart Home Advisor is a data science project that handles the properties market 
 This project was made by:
 [Zaid Allawanseh](https://www.linkedin.com/in/zaid-allawanseh/) ||
 [Mohammad Aljermy](https://www.linkedin.com/in/mohammad-aljermy/) ||
-[Mahmoud Ayman](https://www.linkedin.com/in/mahmoud-ayman-311389263/)
+[Mahmoud Ayman](https://www.linkedin.com/in/mahmoud-ayman3/)
