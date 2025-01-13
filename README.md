@@ -12,7 +12,7 @@
 ### Overview
 Smart Home Advisor is a comprehensive A-Z data Science project that provides insights into house listings from OpenSooq, descriptive analytics, and a chatbot interface for user interaction through a FastAPI-based web application.
 
-![Home Page](https://github.com/ZaidHani/Smart-Home-Advisor/blob/main/images/home%20page.png)
+![Full Project](https://github.com/ZaidHani/Smart-Home-Advisor/blob/main/images/All%20Project.png)
 
 ### Features
 + Automated data ingestion pipeline with Apache Airflow
@@ -60,6 +60,7 @@ To develop machine learning models, we utilized PyCaret, an automated machine le
 ![PyCaret](https://github.com/ZaidHani/Smart-Home-Advisor/blob/main/images/pycaret%20logo.png)
 
 ### FastAPI
+![Home Page](https://github.com/ZaidHani/Smart-Home-Advisor/blob/main/images/home%20page.png)
 The web app is composed of 4 pages:
 + Home Page: Overview of the project
 + Models Page: Predict property prices
