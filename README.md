@@ -28,9 +28,13 @@ Smart Home Advisor is a comprehensive A-Z data Science project that provides ins
  + Prerequisites:
    + WSL2
    + Docker
-+ Airflow:
-  + Download the docker-compose file:
-    ```curl -LFO```
++ Airflow (all steps using wsl2):
+  + Create a directory named 'airflow'
+  + Download the docker-compose file from this [link](https://github.com/ZaidHani/Smart-Home-Advisor/blob/main/airflow/docker-compose.yaml) and move it inside the airflow directory
+  + Run the following commands inside the airflow directory to create subdirectories  ```mkdir -p ./dags ./logs ./plugins ./config```
+  ```echo -e "AIRFLOW_UID=$(id -u)" > .env``` ```AIRFLOW_UID=50000```
+  + Run this command ```docker compose up airflow-init``` to initialize the airflow database
+  + Finally run ```docker compose up``` or ```docker compose up -d``` to run airflow
    
 
 ### Tech Stack
@@ -52,7 +56,8 @@ We have 2 data pipelines for this project, the first one is the initial data pip
 ![Data Warehouse Schema](https://github.com/ZaidHani/Smart-Home-Advisor/blob/main/images/data%20warehouse%20postgre.jpg)
 
 ### Machine Learning Model
-PyCaret is an automated machine-learning framework that constructs numerous data pipelines and identifies the model with the highest efficiency.
+To develop machine learning models, we utilized PyCaret, an automated machine learning framework that constructs numerous data pipelines and identifies the model with the highest efficiency.
+![PyCaret](https://github.com/ZaidHani/Smart-Home-Advisor/blob/main/images/pycaret%20logo.png)
 
 ### FastAPI
 The web app is composed of 4 pages:
@@ -61,12 +66,15 @@ The web app is composed of 4 pages:
 + Dashboard Page: Visualize insights and trends
 + Chatbot Page: Interact with a RAG chatbot
 
+### Chatbot
+The chatbot was built using groq API with the "llama-3.1-70b-versatile" model and FIASS as a vector database.
+
 
 ### Conclusion
-Smart Home Advisor is a data science project that handles the properties market and provides a web app to help users buy properties and discover the housing market trends.
+Smart Home Advisor is a data science project that analyzes the property market and provides a web app to help users buy properties and discover housing market trends.
 
 ### Contact
-This project was made by:
+This project was done by:
 [Zaid Allawanseh](https://www.linkedin.com/in/zaid-allawanseh/) ||
 [Mohammad Aljermy](https://www.linkedin.com/in/mohammad-aljermy/) ||
 [Mahmoud Ayman](https://www.linkedin.com/in/mahmoud-ayman3/)
